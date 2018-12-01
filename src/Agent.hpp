@@ -6,14 +6,6 @@
 #include "PacketSniffer.hpp"
 #include "ClientComm.hpp"
 
-#ifdef _WIN32
-#include "Windivert.hpp"
-#elif __linux__
-#include "LinuxPacketSniffer.hpp"
-#else
-#error "Operating system not supported"
-#endif
-
 
 class Agent
 {

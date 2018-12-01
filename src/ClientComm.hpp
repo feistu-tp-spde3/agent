@@ -25,13 +25,15 @@ private:
 
     void receiveMessage();
 
-    const size_t MAX_BUFFER_SIZE{ 1024 };
-    const unsigned int CONNECT_TIMEOUT{ 1000 };
+	// size of receiving buffer from client
+    static const size_t MAX_BUFFER_SIZE{ 1024 };
+	// in miliseconds
+    static const unsigned int CONNECT_TIMEOUT{ 1000 };
 
 public:
     ClientComm(Configuration &config, std::mutex &control_mutex);
 
-    // Creates a UDP server on <listener_port> and waits for 1 client
+    // Creates a UDP server on <listener_port> and waits for max 1 client
     void waitForClient(uint16_t listener_port);
 
     void connect(const boost::asio::ip::address &ip, uint16_t port);

@@ -2,6 +2,7 @@
 #include "Configuration.hpp"
 
 #include <boost/chrono.hpp>
+#include "json.hpp"
 
 
 ClientComm::ClientComm(Configuration &config, std::mutex &control_mutex) :
@@ -27,7 +28,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
         listener.set_option(boost::asio::socket_base::broadcast(true));
 
         int senderPort = -1;
-        char buffer[MAX_BUFFER_SIZE];
+		char buffer[MAX_BUFFER_SIZE] = {0};
         size_t bytesReceived = 0;
         bool messageReceived = false;
 

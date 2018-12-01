@@ -11,10 +11,10 @@ file (GLOB HPP_FILES src/*.hpp)
 
 set (SOURCE_FILES ${CPP_FILES} ${HPP_FILES})
 
-if (EXISTS /usr/lib/x86_64-linux-gnu/libnetfilter_queue.so)
-    set (LIBS /usr/lib/x86_64-linux-gnu/libnetfilter_queue.so)
+if (EXISTS /usr/lib/x86_64-linux-gnu/libpcap.so)
+    set (LIBS /usr/lib/x86_64-linux-gnu/libpcap.so)
 else ()
-    set (LIBS /usr/lib/i386-linux-gnu/libnetfilter_queue.so)
+    set (LIBS /usr/lib/i386-linux-gnu/libpcap.so)
 endif ()
 
 set (Boost_USE_STATIC_LIBS OFF)
