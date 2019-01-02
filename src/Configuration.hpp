@@ -3,6 +3,9 @@
 #include <string>
 #include <iostream>
 #include <mutex>
+#include <vector>
+
+#include "Collector.hpp"
 
 
 class Configuration 
@@ -11,20 +14,43 @@ private:
     std::mutex &m_control_mutex;
     const std::string &m_filename;
 
-    std::string mAgentName;	    // nazov agenta
-    std::string mIPProtocol;	    // filtrovanie podla IP protokolu(IPv4, IPv6)
-    std::string mSrcAddr;	    // filtrovanie podla zdrojovej adresy
-    std::string mDstAddr;	    // filtrovanie podla cielovej adresy
-    std::string mCoreProtocol;	    // filtrovanie podla vnoreneho protokolu(TCP,UDP,...)
-    std::string mSrcPort;	    // filtrovanie podla zdrojoveho portu
-    std::string mDstPort;	    // filtrovanie podla cieloveho portu
-    std::string mBound;		    // filtrovanie prichadzajucich/odchadzajucich paketov
+	std::vector<Collector> m_collectors;
 
-    unsigned mQueueLength{ 8192 };	    // velkost fronty na pakety
-    unsigned mQueueTime{ 2048 };	    // maximalny cas paketu vo fronte
-    unsigned mSendingTime{ 60 };	    // cas po ktorom sa odosielaju data na kolektor
+	// nazov agenta
+    std::string mAgentName;
 
-    std::string mDirectory{ "Data/" };	    // adresar kam sa ukladaju pakety
+	// filtrovanie podla IP protokolu(IPv4, IPv6)
+    std::string mIPProtocol;
+
+	// filtrovanie podla zdrojovej adresy
+    std::string mSrcAddr;
+
+	// filtrovanie podla cielovej adresy
+    std::string mDstAddr;
+
+	// filtrovanie podla vnoreneho protokolu(TCP,UDP,...)
+    std::string mCoreProtocol;
+
+	// filtrovanie podla zdrojoveho portu
+    std::string mSrcPort;
+
+	// filtrovanie podla cieloveho portu
+    std::string mDstPort;
+
+	// filtrovanie prichadzajucich/odchadzajucich paketov
+    std::string mBound;
+
+	// velkost fronty na pakety
+    unsigned mQueueLength{ 8192 };
+
+	// maximalny cas paketu vo fronte
+	unsigned mQueueTime{ 2048 };
+
+	// cas po ktorom sa odosielaju data na kolektor
+	unsigned mSendingTime{ 60 };
+
+	// adresar kam sa ukladaju pakety
+    std::string mDirectory{ "Data/" };
 
     // filter pre packet sniffer
     std::string mFilter;
@@ -44,6 +70,7 @@ private:
 public:
     Configuration(const std::string &filename, std::mutex &control_mutex);
 
+	const std::vector<Collector> &getCollectors() { return m_collectors; }
     std::string getFilter() const { return mFilter; }
 
     unsigned getQueueLenght() const { return mQueueLength; }

@@ -27,6 +27,7 @@ private:
 
 	// size of receiving buffer from client
     static const size_t MAX_BUFFER_SIZE{ 1024 };
+
 	// in miliseconds
     static const unsigned int CONNECT_TIMEOUT{ 1000 };
 
@@ -39,4 +40,7 @@ public:
     void connect(const boost::asio::ip::address &ip, uint16_t port);
 
     const std::string &getMsg() const { return m_client_msg; }
+
+	// Acknowledge received message by deleting the previous one
+	void ack();
 };

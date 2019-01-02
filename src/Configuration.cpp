@@ -1,6 +1,6 @@
 #include "Configuration.hpp"
 #include "pugixml.hpp"
-#include "Collector.hpp"
+
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem.hpp>
@@ -34,75 +34,74 @@ void Configuration::parse()
     pugi::xml_document configurationFile;
     pugi::xml_parse_result result = configurationFile.load_file(fullPath.c_str());
 
-    if (result.status == pugi::xml_parse_status::status_ok)
+	if (result.status != pugi::xml_parse_status::status_ok)
+	{
+		std::cout << "[Configuration] Could not parse configuration file: " << result.description() << std::endl;
+		return;
+	}
+
+    pugi::xml_node configuration = configurationFile.child("Configuration");
+    pugi::xml_node agent;
+        
+    if(configuration)
+        agent = configuration.child("Agent");
+
+    // nacitanie nastaveni agenta
+    if (agent)
     {
-        pugi::xml_node configuration = configurationFile.child("Configuration");
-        pugi::xml_node agent;
-        
-        if(configuration)
-            agent = configuration.child("Agent");
+        if (agent.child("Name"))
+            mAgentName = agent.child("Name").text().as_string();
 
-        // nacitanie nastaveni agenta
-        if (agent)
-        {
-            if (agent.child("Name"))
-                mAgentName = agent.child("Name").text().as_string();
+        if (agent.child("IP_Protocol"))
+            mIPProtocol = agent.child("IP_Protocol").text().as_string();
 
-            if (agent.child("IP_Protocol"))
-                mIPProtocol = agent.child("IP_Protocol").text().as_string();
+        if (agent.child("SrcAddr"))
+            mSrcAddr = agent.child("SrcAddr").text().as_string();
 
-            if (agent.child("SrcAddr"))
-                mSrcAddr = agent.child("SrcAddr").text().as_string();
+        if (agent.child("DstAddr"))
+            mDstAddr = agent.child("DstAddr").text().as_string();
 
-            if (agent.child("DstAddr"))
-                mDstAddr = agent.child("DstAddr").text().as_string();
+        if (agent.child("CoreProtocol"))
+            mCoreProtocol = agent.child("CoreProtocol").text().as_string();
 
-            if (agent.child("CoreProtocol"))
-                mCoreProtocol = agent.child("CoreProtocol").text().as_string();
+        if (agent.child("SrcPort"))
+            mSrcPort = agent.child("SrcPort").text().as_string();
 
-            if (agent.child("SrcPort"))
-                mSrcPort = agent.child("SrcPort").text().as_string();
+        if (agent.child("DstPort"))
+            mDstPort = agent.child("DstPort").text().as_string();
 
-            if (agent.child("DstPort"))
-                mDstPort = agent.child("DstPort").text().as_string();
+        if (agent.child("Bound"))
+            mBound = agent.child("Bound").text().as_string();
 
-            if (agent.child("Bound"))
-                mBound = agent.child("Bound").text().as_string();
+        if (agent.child("QueueLength"))
+            mQueueLength = agent.child("QueueLength").text().as_uint();
 
-            if (agent.child("QueueLength"))
-                mQueueLength = agent.child("QueueLength").text().as_uint();
+        if (agent.child("QueueTime"))
+            mQueueTime = agent.child("QueueTime").text().as_uint();
 
-            if (agent.child("QueueTime"))
-                mQueueTime = agent.child("QueueTime").text().as_uint();
-
-            if (agent.child("Directory"))
-                mDirectory = agent.child("Directory").text().as_string();
-        }
-
-        // nacitanie kolektorov
-        pugi::xml_node sender = configuration.child("Sender");
-
-        if (sender)
-        {
-            for (pugi::xml_node collector = sender.child("Collector"); collector; collector = collector.next_sibling("Collector"))
-            {
-                std::string collectorAddr = collector.text().as_string();
-                std::string addr = collectorAddr.substr(0, collectorAddr.find(":", 0));
-                std::string port = collectorAddr.substr(collectorAddr.find(":", 0) + 1, collectorAddr.length() - collectorAddr.find(":", 0));
-        
-                Collector newCollector(addr, port);
-                collectors.push_back(newCollector);
-            }
-
-            if (sender.child("SendingTime"))
-            {
-                mSendingTime = atoi(sender.child("SendingTime").text().as_string());
-            }
-        }
+        if (agent.child("Directory"))
+            mDirectory = agent.child("Directory").text().as_string();
     }
-    else 
+
+    // nacitanie kolektorov
+    pugi::xml_node sender = configuration.child("Sender");
+
+    if (sender)
     {
-        std::cout << "[Configuration] Could not parse configuration file: " << result.description() << std::endl;
+        for (pugi::xml_node collector = sender.child("Collector"); collector; collector = collector.next_sibling("Collector"))
+        {
+            std::string collectorAddr = collector.text().as_string();
+            std::string addr = collectorAddr.substr(0, collectorAddr.find(":", 0));
+            std::string port = collectorAddr.substr(collectorAddr.find(":", 0) + 1, collectorAddr.length() - collectorAddr.find(":", 0));
+        
+            Collector newCollector(addr, port);
+            m_collectors.push_back(newCollector);
+        }
+
+        if (sender.child("SendingTime"))
+        {
+            mSendingTime = atoi(sender.child("SendingTime").text().as_string());
+        }
     }
 }
 
@@ -132,13 +131,11 @@ void Configuration::createFilter()
         mFilter += " and ip.SrcAddr == " + mSrcAddr;
     }
 		
-
     if (!mDstAddr.empty())
     {
         mFilter += " and ip.DstAddr == " + mDstAddr;
     }
 		
-
     if (!mCoreProtocol.empty())
     {
         if (mCoreProtocol == "TCP")

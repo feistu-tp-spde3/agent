@@ -3,8 +3,6 @@
 
 #include <chrono>
 
-std::vector<Collector> collectors;
-
 
 Collector::Collector(const std::string &ip, const std::string &port) :
     m_ip_str(ip),

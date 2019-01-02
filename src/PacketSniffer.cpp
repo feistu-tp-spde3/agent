@@ -9,65 +9,22 @@
 #include <arpa/inet.h>
 #endif
 
-bool PacketSniffer::init(const Configuration& config) {
-    return true;
-}
 
-
-void packetHandler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
+PacketSniffer::PacketSniffer(const Configuration &config, std::mutex &control_mutex) :
+	m_config{ config },
+	m_control_mutex{ control_mutex }
 {
-	struct tm ltime;
-	char timestr[16];
-	ip_hdr *ih;
-	udp_hdr *uh;
-	u_int ip_len;
-	u_short sport, dport;
-	time_t local_tv_sec;
-
-	/* convert the timestamp to readable format */
-	// local_tv_sec = header->ts.tv_sec;
-	// localtime_s(&ltime, &local_tv_sec);
-	// strftime(timestr, sizeof(timestr), "%H:%M:%S", &ltime);
-
-	/* print timestamp and length of the packet */
-	// printf("%s.%.6d len:%d ", timestr, header->ts.tv_usec, header->len);
-	printf("len:%d ", header->len);
-
-	/* retireve the position of the ip header */
-	ih = (ip_hdr *)(packet + 14); //length of ethernet header
-
-	/* retireve the position of the udp header */
-	ip_len = IP_HL(ih) * 4;
-	uh = (udp_hdr *)((u_char*)ih + ip_len);
-
-	/* convert from network byte order to host byte order */
-	sport = ntohs(uh->sport);
-	dport = ntohs(uh->dport);
-
-	/* print ip addresses and udp ports */
-	printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
-		ih->ip_src.byte1,
-		ih->ip_src.byte2,
-		ih->ip_src.byte3,
-		ih->ip_src.byte4,
-		sport,
-		ih->ip_dst.byte1,
-		ih->ip_dst.byte2,
-		ih->ip_dst.byte3,
-		ih->ip_dst.byte4,
-		dport);
+	;
 }
 
 
-void PacketSniffer::run(const Configuration &config) {
-	pcap_t *handle;			/* Session handle */
-	char errbuf[PCAP_ERRBUF_SIZE];	/* Error string */
-	bpf_program fp;		/* The compiled filter */
-	char filter_exp[] = "ip and tcp";	/* The filter expression */
-	bpf_u_int32 mask;		/* Our netmask */
-	bpf_u_int32 net;		/* Our IP */
+void PacketSniffer::init()
+{
+	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_if_t *alldevs;
 	pcap_if_t *d;
+	bpf_u_int32 mask;
+	bpf_u_int32 net;
 	int i = 0;
 	int inum;
 
@@ -102,17 +59,32 @@ void PacketSniffer::run(const Configuration &config) {
 	/* Jump to the selected adapter */
 	for (d = alldevs, i = 0; i < inum - 1; d = d->next, i++);
 
+	m_cap_device = std::string(d->name);
+
 	/* Find the properties for the device */
-	if (pcap_lookupnet(d->name, &net, &mask, errbuf) == -1) {
+	if (pcap_lookupnet(d->name, &net, &mask, errbuf) == -1)
+	{
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", d->name, errbuf);
 		net = 0;
 		mask = 0;
 	}
 
+	m_cap_net = net;
+	m_cap_mask = mask;
+}
+
+
+void PacketSniffer::run()
+{
+	pcap_t *handle;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	bpf_program fp;
+	char filter_exp[] = "ip";
+
 	/* Open the session in promiscuous mode */
-	handle = pcap_open_live(d->name, BUFSIZ, 1, 10, errbuf);
+	handle = pcap_open_live(m_cap_device.c_str(), 512, 1, 10, errbuf);
 	if (handle == NULL) {
-		fprintf(stderr, "Couldn't open device %s: %s\n", d->name, errbuf);
+		fprintf(stderr, "Couldn't open device %s: %s\n", m_cap_device, errbuf);
 		return;
 	}
 
@@ -123,7 +95,7 @@ void PacketSniffer::run(const Configuration &config) {
 	}
 
 	/* Compile and apply the filter */
-	if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+	if (pcap_compile(handle, &fp, filter_exp, 0, m_cap_net) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		return;
 	}
@@ -132,19 +104,111 @@ void PacketSniffer::run(const Configuration &config) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
 		return;
 	}
-	/* Grab a packet */
-	// packet = pcap_next(handle, &header);
-	/* Print its length */
-	// printf("Jacked a packet with length of [%d]\n", header.len);
 
-	// print_packet_info(packet, header);
-	//readPacket(packet, header);
+	// pcap_loop(handle, 0, packetHandler, nullptr);
 
-	pcap_loop(handle, 0, packetHandler, nullptr);
-	std::cout << "hello?\n";
+	m_sniffer_thread = boost::thread([this, handle]()
+	{
+		struct pcap_pkthdr *header;
+		const u_char *packet_data;
+		int res;
 
-	/* And close the session */
-	pcap_close(handle);
+		while ((res = pcap_next_ex(handle, &header, &packet_data)) >= 0)
+		{
+			if (res == 0)
+			{
+				// Timeout elapsed
+				continue;
+			}
 
-	return;
+			writePacket(header, packet_data);
+
+			if (!m_run_thread)
+			{
+				m_control_mutex.lock();
+				std::cout << "[PacketSniffer] Stopped sniffer thread\n";
+				m_run_thread = false;
+				m_control_mutex.unlock();
+				break;
+			}
+		}
+
+		pcap_close(handle);
+	});
+
+	m_control_mutex.lock();
+	m_run_thread = true;
+	m_control_mutex.unlock();
+
+	m_sniffer_thread.detach();
+}
+
+
+void PacketSniffer::writePacket(struct pcap_pkthdr *header, const u_char *data)
+{
+	/*
+	
+		u_short sport, dport;
+	time_t local_tv_sec;
+
+	// local_tv_sec = header->ts.tv_sec;
+	// localtime_s(&ltime, &local_tv_sec);
+	// strftime(timestr, sizeof(timestr), "%H:%M:%S", &ltime);
+
+	// printf("%s.%.6d len:%d ", timestr, header->ts.tv_usec, header->len);
+	
+	*/
+
+	ip_header *ih = nullptr;
+	tcp_header *th = nullptr;
+	udp_header *uh = nullptr;
+	u_int ip_len;
+	u_short sport, dport;
+
+	printf("len:%d ", header->len);
+
+	ih = (ip_header *)(data + sizeof(eth_header));
+	ip_len = IP_HL(ih) * 4;
+	if (ip_len < 20)
+	{
+		// Invalid IP header length
+		;
+	}
+
+	if (ih->ip_p == IPPROTO_TCP)
+	{
+		th = (tcp_header *)((u_char *)ih + ip_len);
+		sport = ntohs(th->th_sport);
+		dport = ntohs(th->th_dport);
+
+		printf("TCP ");
+	}
+	else if (ih->ip_p == IPPROTO_UDP)
+	{
+		uh = (udp_header *)((u_char*)ih + ip_len);
+		sport = ntohs(uh->uh_sport);
+		dport = ntohs(uh->uh_dport);
+
+		printf("UDP ");
+	}
+	else
+	{
+		return;
+	}
+
+	uint32_t s = ih->ip_src.w;
+	printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
+		ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
+		sport,
+		ih->ip_dst.b1, ih->ip_dst.b2, ih->ip_dst.b3, ih->ip_dst.b4,
+		dport);
+}
+
+
+void PacketSniffer::stop()
+{
+	m_control_mutex.lock();
+	std::cout << "[PacketSniffer] Stopping sniffer thread\n";
+	m_run_thread = false;
+	m_control_mutex.unlock();
 }

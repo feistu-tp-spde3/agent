@@ -136,3 +136,11 @@ void ClientComm::receiveMessage()
         }
     }
 }
+
+
+void ClientComm::ack()
+{
+	m_control_mutex.lock();
+	m_client_msg = "";
+	m_control_mutex.unlock();
+}

@@ -6,12 +6,6 @@
 #include <boost/process.hpp>
 
 
-// globalny zoznam kolektorov
-// TODO presunut do globalnej triedy
-class Collector;
-extern std::vector<Collector> collectors;
-
-
 class Configuration;
 
 

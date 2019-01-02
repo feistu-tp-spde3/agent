@@ -10,35 +10,41 @@
 #define ETHERTYPE_ARP 0x0806
 
 /* Ethernet header */
-struct ethernet_hdr
+struct eth_header
 {
 	uint8_t ether_dhost[ETHER_ADDR_LEN]; /* Destination host address */
 	uint8_t ether_shost[ETHER_ADDR_LEN]; /* Source host address */
 	uint16_t ether_type; /* IP? ARP? RARP? etc */
 };
 
-struct ip_address
-{
-	uint8_t byte1;
-	uint8_t byte2;
-	uint8_t byte3;
-	uint8_t byte4;
+union ip_address {
+	struct {
+		uint8_t b1;
+		uint8_t b2;
+		uint8_t b3;
+		uint8_t b4;
+	};
+	uint32_t w;
 };
 
 /* IP header */
-struct ip_hdr
+struct ip_header
 {
-	uint8_t ip_vhl;		/* version << 4 | header length >> 2 */
-	uint8_t ip_tos;		/* type of service */
+	uint8_t ip_vhl;			/* version << 4 | header length >> 2 */
+	uint8_t ip_tos;			/* type of service */
 	uint16_t ip_len;		/* total length */
-	uint16_t ip_id;		/* identification */
+	uint16_t ip_id;			/* identification */
 	uint16_t ip_off;		/* fragment offset field */
-
-	uint8_t ip_ttl;		/* time to live */
-	uint8_t ip_p;		/* protocol */
-	uint8_t ip_sum;		/* checksum */
-	ip_address ip_src; /* source and dest address */
-	ip_address ip_dst; 
+#define IP_RF 0x8000		/* reserved fragment flag */
+#define IP_DF 0x4000		/* dont fragment flag */
+#define IP_MF 0x2000		/* more fragments flag */
+#define IP_OFFMASK 0x1fff	/* mask for fragmenting bits */
+	uint8_t ip_ttl;			/* time to live */
+	uint8_t ip_p;			/* protocol */
+	uint8_t ip_sum;			/* checksum */
+	ip_address ip_src;		/* source and dest address */
+	ip_address ip_dst;
+	uint32_t op_pad;
 };
 
 #define IP_RF 0x8000		/* reserved fragment flag */
@@ -53,11 +59,11 @@ typedef uint32_t tcp_seq;
 
 struct tcp_header
 {
-	uint16_t th_sport;	/* source port */
-	uint16_t th_dport;	/* destination port */
-	tcp_seq th_seq;		/* sequence number */
-	tcp_seq th_ack;		/* acknowledgement number */
-	uint8_t th_offx2;	/* data offset, rsvd */
+	uint16_t th_sport;		/* source port */
+	uint16_t th_dport;		/* destination port */
+	tcp_seq th_seq;			/* sequence number */
+	tcp_seq th_ack;			/* acknowledgement number */
+	uint8_t th_offx2;		/* data offset, rsvd */
 #define TH_OFF(th)	(((th)->th_offx2 & 0xf0) >> 4)
 	uint8_t th_flags;
 #define TH_FIN 0x01
@@ -75,10 +81,10 @@ struct tcp_header
 };
 
 /* UDP header*/
-struct udp_hdr
+struct udp_header
 {
-	uint16_t sport;			// Source port
-	uint16_t dport;			// Destination port
-	uint16_t len;			// Datagram length
-	uint16_t crc;			// Checksum
+	uint16_t uh_sport;		// Source port
+	uint16_t uh_dport;		// Destination port
+	uint16_t uh_len;		// Datagram length
+	uint16_t uh_crc;		// Checksum
 };
