@@ -147,7 +147,7 @@ void PacketSniffer::run()
 void PacketSniffer::writePacket(struct pcap_pkthdr *header, const u_char *data)
 {
 	/*
-	
+
 		u_short sport, dport;
 	time_t local_tv_sec;
 
@@ -156,7 +156,7 @@ void PacketSniffer::writePacket(struct pcap_pkthdr *header, const u_char *data)
 	// strftime(timestr, sizeof(timestr), "%H:%M:%S", &ltime);
 
 	// printf("%s.%.6d len:%d ", timestr, header->ts.tv_usec, header->len);
-	
+
 	*/
 
 	ip_header *ih = nullptr;

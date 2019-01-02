@@ -21,7 +21,7 @@ private:
 
 	uint32_t m_cap_net;
 	uint32_t m_cap_mask;
-	
+
 	void writePacket(struct pcap_pkthdr *header, const u_char *data);
 
 public:

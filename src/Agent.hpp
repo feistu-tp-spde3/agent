@@ -10,13 +10,13 @@
 class Agent
 {
 private:
-    std::mutex m_control_mutex;
+	std::mutex m_control_mutex;
 
-    Configuration m_config;
-    std::shared_ptr<PacketSniffer> m_sniffer;
+	Configuration m_config;
+	std::shared_ptr<PacketSniffer> m_sniffer;
 
-    ClientComm m_client_comm;
+	ClientComm m_client_comm;
 
 public:
-    Agent(const std::string &config_filename);
+	Agent(const std::string &config_filename);
 };
