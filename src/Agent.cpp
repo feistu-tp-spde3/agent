@@ -9,20 +9,29 @@ Agent::Agent(const std::string &config_filename) :
 {
 	m_client_comm.waitForClient(8888);
 
+	// Initialize the sniffing device. This is only done once.
 	m_sniffer->init();
-	m_sniffer->run();
+
+	m_sniffer->start();
 
 	int slept = 0;
-	while (slept < 30)
+	while (slept < 60)
 	{
 		std::string msg = m_client_comm.getMsg();
 		if (msg == "start")
 		{
-
+			m_sniffer->start();
 		}
 		else if (msg == "stop")
 		{
 			m_sniffer->stop();
+		}
+		else if (msg.find("filter//", 0) != std::string::npos)
+		{
+			std::string filter = msg.substr(msg.find("filter//", 0) + strlen("filter//"), msg.size());
+
+			std::cout << "[Agent] Changing filter to: \"" << filter << "\"\n";
+			m_sniffer->setFilter(filter);
 		}
 
 		m_client_comm.ack();

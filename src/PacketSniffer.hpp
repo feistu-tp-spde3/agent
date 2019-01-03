@@ -3,6 +3,7 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <mutex>
+#include <pcap.h>
 
 #include "Configuration.hpp"
 
@@ -22,13 +23,20 @@ private:
 	uint32_t m_cap_net;
 	uint32_t m_cap_mask;
 
+	pcap_t *m_handle{ nullptr };
+
+	// Default filter for npcap if none from config is available
+	std::string m_default_filter{ "ip" };
+	std::string m_filter{ m_default_filter };
+
 	void writePacket(struct pcap_pkthdr *header, const u_char *data);
 
 public:
 	PacketSniffer(const Configuration &config, std::mutex &control_mutex);
 
 	void init();
-	void run();
-
+	void start();
 	void stop();
+
+	void setFilter(const std::string &filter);
 };

@@ -2,7 +2,7 @@
 #include "netdefs.h"
 
 #include <iostream>
-#include <pcap.h>
+
 #include <ctime>
 
 #ifdef __linux__
@@ -74,46 +74,35 @@ void PacketSniffer::init()
 }
 
 
-void PacketSniffer::run()
+void PacketSniffer::start()
 {
-	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	bpf_program fp;
-	char filter_exp[] = "ip";
-
+	
 	/* Open the session in promiscuous mode */
-	handle = pcap_open_live(m_cap_device.c_str(), 512, 1, 10, errbuf);
-	if (handle == NULL) {
+	m_handle = pcap_open_live(m_cap_device.c_str(), 512, 1, 10, errbuf);
+	if (m_handle == nullptr) {
 		fprintf(stderr, "Couldn't open device %s: %s\n", m_cap_device, errbuf);
 		return;
 	}
 
-	if (pcap_datalink(handle) != DLT_EN10MB)
+	if (pcap_datalink(m_handle) != DLT_EN10MB)
 	{
 		fprintf(stderr, "Only Ethernet networks are supported");
 		return;
 	}
 
-	/* Compile and apply the filter */
-	if (pcap_compile(handle, &fp, filter_exp, 0, m_cap_net) == -1) {
-		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
-		return;
-	}
-
-	if (pcap_setfilter(handle, &fp) == -1) {
-		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
-		return;
-	}
+	std::cout << "[PacketSniffer] Initial filter: \"" << m_filter << "\"\n";
+	setFilter(m_filter);
 
 	// pcap_loop(handle, 0, packetHandler, nullptr);
 
-	m_sniffer_thread = boost::thread([this, handle]()
+	m_sniffer_thread = boost::thread([this]()
 	{
 		struct pcap_pkthdr *header;
 		const u_char *packet_data;
 		int res;
 
-		while ((res = pcap_next_ex(handle, &header, &packet_data)) >= 0)
+		while ((res = pcap_next_ex(m_handle, &header, &packet_data)) >= 0)
 		{
 			if (res == 0)
 			{
@@ -133,7 +122,7 @@ void PacketSniffer::run()
 			}
 		}
 
-		pcap_close(handle);
+		pcap_close(m_handle);
 	});
 
 	m_control_mutex.lock();
@@ -142,7 +131,6 @@ void PacketSniffer::run()
 
 	m_sniffer_thread.detach();
 }
-
 
 void PacketSniffer::writePacket(struct pcap_pkthdr *header, const u_char *data)
 {
@@ -211,4 +199,27 @@ void PacketSniffer::stop()
 	std::cout << "[PacketSniffer] Stopping sniffer thread\n";
 	m_run_thread = false;
 	m_control_mutex.unlock();
+}
+
+
+void PacketSniffer::setFilter(const std::string &filter)
+{
+	if (m_handle == nullptr)
+	{
+		return;
+	}
+
+	bpf_program fp;
+
+	if (pcap_compile(m_handle, &fp, filter.c_str(), 0, m_cap_net) == -1) {
+		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter.c_str(), pcap_geterr(m_handle));
+		return;
+	}
+
+	if (pcap_setfilter(m_handle, &fp) == -1) {
+		fprintf(stderr, "Couldn't install filter %s: %s\n", filter.c_str(), pcap_geterr(m_handle));
+		return;
+	}
+
+	m_filter = filter;
 }
