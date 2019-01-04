@@ -1,22 +1,28 @@
+#include <boost/chrono.hpp>
+
 #include "Agent.hpp"
 
-#include <boost/chrono.hpp>
 
 Agent::Agent(const std::string &config_filename) :
 	m_config{ Configuration(config_filename, m_control_mutex) },
 	m_client_comm{ ClientComm(m_config, m_control_mutex) },
 	m_sniffer{ std::make_shared<PacketSniffer>(m_config, m_control_mutex) }
 {
-	m_client_comm.waitForClient(8888);
-
 	// Initialize the sniffing device. This is only done once.
-	m_sniffer->init();
+	if (!m_sniffer->init())
+	{
+		// Probably dont want exceptions here, whatever..
+		throw std::runtime_error("Failed to initialize sniffer");
+	}
 
 	m_sniffer->start();
+
+	spawnServer(8888);
 
 	int slept = 0;
 	while (slept < 60)
 	{
+		std::cout << "Stuff?\n";
 		std::string msg = m_client_comm.getMsg();
 		if (msg == "start")
 		{
@@ -34,6 +40,7 @@ Agent::Agent(const std::string &config_filename) :
 			m_sniffer->setFilter(filter);
 		}
 
+		std::cout << "Does it fail here\n";
 		m_client_comm.ack();
 
 		boost::this_thread::sleep_for(boost::chrono::seconds(1));
@@ -41,4 +48,24 @@ Agent::Agent(const std::string &config_filename) :
 	}
 
 	// boost::this_thread::sleep_for(boost::chrono::seconds(30));
+}
+
+
+void Agent::spawnServer(uint16_t port)
+{
+	boost::thread spawn_thread = boost::thread([this, port]()
+	{
+		while (true)
+		{
+			if (m_client_comm.isListenerReady())
+			{
+				std::cout << "[Agent] Listener ready!\n";
+				m_client_comm.waitForClient(port);
+			}
+
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(SPAWN_SERVER_TIMEOUT));
+		}
+	});
+
+	spawn_thread.detach();
 }

@@ -1,6 +1,3 @@
-#include "PacketSniffer.hpp"
-#include "netdefs.h"
-
 #include <iostream>
 
 #include <ctime>
@@ -8,6 +5,9 @@
 #ifdef __linux__
 #include <arpa/inet.h>
 #endif
+
+#include "PacketSniffer.hpp"
+#include "netdefs.h"
 
 
 PacketSniffer::PacketSniffer(const Configuration &config, std::mutex &control_mutex) :
@@ -18,7 +18,7 @@ PacketSniffer::PacketSniffer(const Configuration &config, std::mutex &control_mu
 }
 
 
-void PacketSniffer::init()
+bool PacketSniffer::init()
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_if_t *alldevs;
@@ -32,7 +32,7 @@ void PacketSniffer::init()
 	if (pcap_findalldevs(&alldevs, errbuf) == -1)
 	{
 		fprintf(stderr, "Error in pcap_findalldevs: %s\n", errbuf);
-		return;
+		return false;
 	}
 
 	/* Print the list */
@@ -53,7 +53,7 @@ void PacketSniffer::init()
 		printf("\nInterface number out of range.\n");
 		/* Free the device list */
 		pcap_freealldevs(alldevs);
-		return;
+		return false;
 	}
 
 	/* Jump to the selected adapter */
@@ -71,6 +71,7 @@ void PacketSniffer::init()
 
 	m_cap_net = net;
 	m_cap_mask = mask;
+	return true;
 }
 
 
@@ -185,6 +186,7 @@ void PacketSniffer::writePacket(struct pcap_pkthdr *header, const u_char *data)
 	}
 
 	uint32_t s = ih->ip_src.w;
+
 	printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
 		ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
 		sport,

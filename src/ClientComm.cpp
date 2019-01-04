@@ -1,14 +1,15 @@
+#include <boost/chrono.hpp>
+
 #include "ClientComm.hpp"
 #include "Configuration.hpp"
-
-#include <boost/chrono.hpp>
 #include "json.hpp"
 
 
 ClientComm::ClientComm(Configuration &config, std::mutex &control_mutex) :
 	m_config{ config },
 	m_control_mutex{ control_mutex },
-	m_client_msg{ "" }
+	m_client_msg{ "" },
+	m_io_service{ std::make_shared<boost::asio::io_service>() }
 {
 	;
 }
@@ -20,9 +21,8 @@ void ClientComm::waitForClient(uint16_t listener_port)
 	{
 		std::cout << "[ClientComm] Launching communication thread on port " << listener_port << std::endl;
 
-		boost::asio::io_service io_service;
 		boost::system::error_code error;
-		boost::asio::ip::udp::socket listener(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), listener_port));
+		boost::asio::ip::udp::socket listener(*m_io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), listener_port));
 		boost::asio::ip::udp::endpoint sender_endpoint;
 
 		listener.set_option(boost::asio::socket_base::broadcast(true));
@@ -31,6 +31,10 @@ void ClientComm::waitForClient(uint16_t listener_port)
 		char buffer[MAX_BUFFER_SIZE] = { 0 };
 		size_t bytesReceived = 0;
 		bool messageReceived = false;
+
+		m_control_mutex.lock();
+		m_listener_ready = false;
+		m_control_mutex.unlock();
 
 		while (!messageReceived)
 		{
@@ -63,9 +67,12 @@ void ClientComm::waitForClient(uint16_t listener_port)
 
 		if (messageReceived && senderPort != -1)
 		{
-			//client_connection = std::make_unique<TCPConnection>();
-			//client_connection->establishConnection(senderEndpoint.address(), senderPort, m_config);
-			this->connect(sender_endpoint.address(), senderPort);
+			if (!connect(sender_endpoint.address(), senderPort))
+			{
+				m_control_mutex.lock();
+				m_listener_ready = true;
+				m_control_mutex.unlock();
+			}
 		}
 	});
 
@@ -73,15 +80,15 @@ void ClientComm::waitForClient(uint16_t listener_port)
 }
 
 
-void ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
+bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 {
 	std::cout << "[ClientComm] Establishing connection" << std::endl;
 	boost::this_thread::sleep_for(boost::chrono::milliseconds(CONNECT_TIMEOUT));
 
-
-	boost::asio::io_service io;
 	boost::asio::ip::tcp::endpoint endpoint(ip, port);
-	m_client = std::make_shared<boost::asio::ip::tcp::socket>(io);
+
+	m_client.reset();
+	m_client = std::make_shared<boost::asio::ip::tcp::socket>(*m_io_service);
 
 	try
 	{
@@ -90,7 +97,7 @@ void ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 	catch (std::exception &e)
 	{
 		std::cout << "[ClientComm] Failed to establish TCP connection to client: " << e.what() << std::endl;
-		return;
+		return false;
 	}
 
 	// odoslanie prvej spravy, ktorou sa identifikuje agent
@@ -105,36 +112,42 @@ void ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 	{
 		boost::thread t = boost::thread([this]()
 		{
+			char buffer[MAX_BUFFER_SIZE] = { 0 };
+			boost::system::error_code error;
+
 			while (true)
 			{
-				this->receiveMessage();
+				size_t received = m_client->read_some(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), error);
+				if (error == boost::asio::error::eof)
+				{
+					std::cout << "[ClientComm] Client dropped\n";
+					m_control_mutex.lock();
+					m_listener_ready = true;
+					m_control_mutex.unlock();
+					break;
+				}
+
+				if (received)
+				{
+					m_control_mutex.lock();
+					std::string message(buffer, received);
+					std::cout << "[ClientComm] Message received: " << message << std::endl;
+					m_client_msg = message;
+					m_control_mutex.unlock();
+				}
 			}
 		});
 
 		t.detach();
 	}
+
+	return true;
 }
 
 
-void ClientComm::receiveMessage()
+bool ClientComm::isListenerReady() const
 {
-	boost::system::error_code error;
-	char buffer[MAX_BUFFER_SIZE] = { 0 };
-	std::size_t bytesReceived = 0;
-
-	while (bytesReceived == 0)
-	{
-		bytesReceived = m_client->read_some(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), error);
-
-		if (bytesReceived != 0)
-		{
-			m_control_mutex.lock();
-			std::string message(buffer, bytesReceived);
-			std::cout << "[ClientComm] Message received: " << message << std::endl;
-			m_client_msg = message;
-			m_control_mutex.unlock();
-		}
-	}
+	return m_listener_ready;
 }
 
 

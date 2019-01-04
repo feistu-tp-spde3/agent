@@ -19,11 +19,11 @@ private:
 	Configuration &m_config;
 
 	boost::thread m_listener_thread;
+	bool m_listener_ready{ true };
 
+	std::shared_ptr<boost::asio::io_service> m_io_service;
 	std::shared_ptr<boost::asio::ip::tcp::socket> m_client;
 	std::string m_client_msg;
-
-	void receiveMessage();
 
 	// size of receiving buffer from client
 	static const size_t MAX_BUFFER_SIZE{ 1024 };
@@ -34,13 +34,15 @@ private:
 public:
 	ClientComm(Configuration &config, std::mutex &control_mutex);
 
-	// Creates a UDP server on <listener_port> and waits for max 1 client
+	// Creates a UDP server on <listener_port> and waits for max 1 client at once
 	void waitForClient(uint16_t listener_port);
 
-	void connect(const boost::asio::ip::address &ip, uint16_t port);
-
-	const std::string &getMsg() const { return m_client_msg; }
+	bool connect(const boost::asio::ip::address &ip, uint16_t port);
+	
+	bool isListenerReady() const;
 
 	// Acknowledge received message by deleting the previous one
 	void ack();
+
+	const std::string &getMsg() const { return m_client_msg; }
 };

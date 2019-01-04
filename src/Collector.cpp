@@ -1,7 +1,7 @@
+#include <chrono>
+
 #include "Collector.hpp"
 #include "Configuration.hpp"
-
-#include <chrono>
 
 
 Collector::Collector(const std::string &ip, const std::string &port) :

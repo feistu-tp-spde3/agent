@@ -34,7 +34,7 @@ private:
 public:
 	PacketSniffer(const Configuration &config, std::mutex &control_mutex);
 
-	void init();
+	bool init();
 	void start();
 	void stop();
 
