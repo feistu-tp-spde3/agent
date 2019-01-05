@@ -22,7 +22,6 @@ Agent::Agent(const std::string &config_filename) :
 	int slept = 0;
 	while (slept < 60)
 	{
-		std::cout << "Stuff?\n";
 		std::string msg = m_client_comm.getMsg();
 		if (msg == "start")
 		{
@@ -31,6 +30,9 @@ Agent::Agent(const std::string &config_filename) :
 		else if (msg == "stop")
 		{
 			m_sniffer->stop();
+			
+			std::cout << "[Agent] Stopping\n";
+			break;
 		}
 		else if (msg.find("filter//", 0) != std::string::npos)
 		{
@@ -39,8 +41,12 @@ Agent::Agent(const std::string &config_filename) :
 			std::cout << "[Agent] Changing filter to: \"" << filter << "\"\n";
 			m_sniffer->setFilter(filter);
 		}
+		else if (msg == "configlist")
+		{
+			std::cout << "Sending message\n";
+			m_client_comm.sendMsg("hello?");
+		}
 
-		std::cout << "Does it fail here\n";
 		m_client_comm.ack();
 
 		boost::this_thread::sleep_for(boost::chrono::seconds(1));

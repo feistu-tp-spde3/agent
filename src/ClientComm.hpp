@@ -45,4 +45,5 @@ public:
 	void ack();
 
 	const std::string &getMsg() const { return m_client_msg; }
+	bool sendMsg(const std::string &msg) const;
 };
