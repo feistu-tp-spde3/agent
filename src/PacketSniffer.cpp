@@ -1,5 +1,4 @@
 #include <iostream>
-#include <ctime>
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -79,7 +78,7 @@ void PacketSniffer::start()
 	char errbuf[PCAP_ERRBUF_SIZE];
 	
 	/* Open the session in promiscuous mode */
-	m_handle = pcap_open_live(m_cap_device.c_str(), 512, 1, 10, errbuf);
+	m_handle = pcap_open_live(m_cap_device.c_str(), 65535, 1, 10, errbuf);
 	if (m_handle == nullptr) {
 		fprintf(stderr, "Couldn't open device %s: %s\n", m_cap_device, errbuf);
 		return;
@@ -102,6 +101,8 @@ void PacketSniffer::start()
 		const u_char *packet_data;
 		int res;
 
+		std::stringstream packetstream;
+
 		while ((res = pcap_next_ex(m_handle, &header, &packet_data)) >= 0)
 		{
 			if (res == 0)
@@ -110,7 +111,21 @@ void PacketSniffer::start()
 				continue;
 			}
 
-			writePacket(header, packet_data);
+			Packet packet;
+			if (!handlePacket(header, packet_data, packet))
+			{
+				continue;
+			}
+
+			writePacket(packetstream, packet_data, header->len, packet);
+			std::cout << packetstream.tellp() << "\n";
+
+			size_t size_to_send = packetstream.tellp();
+			if (size_to_send >= 65536)
+			{
+				packetstream.str("");
+				packetstream.clear();
+			}
 
 			if (!m_run_thread)
 			{
@@ -132,65 +147,129 @@ void PacketSniffer::start()
 	m_sniffer_thread.detach();
 }
 
-void PacketSniffer::writePacket(struct pcap_pkthdr *header, const u_char *data)
+bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data, Packet &packet)
 {
-	/*
-
-		u_short sport, dport;
-	time_t local_tv_sec;
-
-	// local_tv_sec = header->ts.tv_sec;
-	// localtime_s(&ltime, &local_tv_sec);
-	// strftime(timestr, sizeof(timestr), "%H:%M:%S", &ltime);
-
-	// printf("%s.%.6d len:%d ", timestr, header->ts.tv_usec, header->len);
-
-	*/
-
-	ip_header *ih = nullptr;
-	tcp_header *th = nullptr;
-	udp_header *uh = nullptr;
-	u_int ip_len;
+	const ip_header *ih = nullptr;
+	const tcp_header *th = nullptr;
+	const udp_header *uh = nullptr;
+	u_int size_ip;
+	u_int size_tcp;
 	u_short sport, dport;
+	const char *payload = nullptr;
+	u_int payload_size;
 
-	printf("len:%d ", header->len);
-
-	ih = (ip_header *)(data + sizeof(eth_header));
-	ip_len = IP_HL(ih) * 4;
-	if (ip_len < 20)
+	ih = (const ip_header *)(data + sizeof(eth_header));
+	size_ip = IP_HL(ih) * 4;
+	if (size_ip < 20)
 	{
 		// Invalid IP header length
-		;
+		return false;
 	}
+
+	packet.prot = ih->ip_p;
+	packet.tm = header->ts.tv_sec;
+	packet.saddr = ih->ip_src.w;
+	packet.daddr = ih->ip_dst.w;
+
+	// std::cout << "len: " << header->len << "\n";
 
 	if (ih->ip_p == IPPROTO_TCP)
 	{
-		th = (tcp_header *)((u_char *)ih + ip_len);
+		th = (const tcp_header *)((const u_char *)ih + size_ip);
+		size_tcp = TH_OFF(th) * 4;
+		if (size_tcp < 20)
+		{
+			return false;
+		}
+
 		sport = ntohs(th->th_sport);
 		dport = ntohs(th->th_dport);
+		payload = (const char *)(th + size_tcp);
+		payload_size = ntohs(ih->ip_len) - (size_ip + size_tcp);
 
-		printf("TCP ");
+		/*
+		printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
+			ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
+			sport,
+			ih->ip_dst.b1, ih->ip_dst.b2, ih->ip_dst.b3, ih->ip_dst.b4,
+			dport);
+		std::cout << "TCP " << header->len << " " << payload_size << "\n";
+		*/
 	}
 	else if (ih->ip_p == IPPROTO_UDP)
 	{
-		uh = (udp_header *)((u_char*)ih + ip_len);
+		uh = (const udp_header *)((const u_char*)ih + size_ip);
 		sport = ntohs(uh->uh_sport);
 		dport = ntohs(uh->uh_dport);
+		payload = (const char *)(th + sizeof(udp_header));
+		payload_size = ntohs(uh->uh_len) - sizeof(udp_header);
 
-		printf("UDP ");
+		/*
+		printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
+			ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
+			sport,
+			ih->ip_dst.b1, ih->ip_dst.b2, ih->ip_dst.b3, ih->ip_dst.b4,
+			dport);
+		std::cout << "UDP " << payload_size << "\n";
+		*/
 	}
 	else
 	{
-		return;
+		// Unsupported protocol - we still write some data in $packet
+		return false;
 	}
 
-	uint32_t s = ih->ip_src.w;
+	packet.sport = sport;
+	packet.dport = dport;
 
-	printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
-		ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
-		sport,
-		ih->ip_dst.b1, ih->ip_dst.b2, ih->ip_dst.b3, ih->ip_dst.b4,
-		dport);
+	return true;
+}
+
+
+void PacketSniffer::writePacket(std::stringstream &ss, const u_char *payload, uint32_t size, const Packet &packet)
+{
+	std::string protocol;
+
+	if (packet.prot == IPPROTO_TCP)
+	{
+		protocol = "TCP";
+	}
+	else if (packet.prot == IPPROTO_UDP)
+	{
+		protocol = "UDP";
+	}
+	else if (packet.prot == IPPROTO_ICMP)
+	{
+		protocol = "ICMP";
+	}
+
+	ss << std::dec << packet.tm << "\n";
+	ss << protocol << "\n";
+	ss << getIp(packet.saddr) << "\n";
+	ss << getIp(packet.daddr) << "\n";
+	ss << packet.sport << "\n";
+	ss << packet.dport << "\n";
+
+	for (size_t i = 0; i < size; i++)
+	{
+		if (i && !(i % 16))
+		{
+			ss << "\n";
+		}
+
+		ss << std::setfill('0') << std::setw(2) << std::hex << std::uppercase << (unsigned)(payload[i]) << " ";
+	}
+
+	ss << "\n";
+	ss << "End of packet\n\n";
+}
+
+
+std::string PacketSniffer::getIp(uint32_t addr)
+{
+	std::stringstream s;
+	s << (addr & 0xFF) << "." << ((addr >> 8) & 0xFF) << "." << ((addr >> 16) & 0xFF) << "." << ((addr >> 24) & 0xFF);
+	return s.str();
 }
 
 

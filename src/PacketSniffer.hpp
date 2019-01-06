@@ -4,6 +4,8 @@
 #include <boost/thread.hpp>
 #include <mutex>
 #include <pcap.h>
+#include <ctime>
+#include <sstream>
 
 #include "Configuration.hpp"
 
@@ -11,6 +13,19 @@
 class PacketSniffer
 {
 private:
+	struct Packet
+	{
+		uint8_t prot; // IPPROTO_TCP, IPPROTO_UDP, ..
+		time_t tm;
+		uint32_t saddr;
+		uint16_t sport;
+		uint32_t daddr;
+		uint16_t dport;
+
+		uint32_t size;
+		const char *payload;
+	};
+
 	std::mutex &m_control_mutex;
 	const Configuration &m_config;
 
@@ -29,8 +44,10 @@ private:
 	std::string m_default_filter{ "ip" };
 	std::string m_filter{ m_default_filter };
 
-	void writePacket(struct pcap_pkthdr *header, const u_char *data);
+	bool handlePacket(struct pcap_pkthdr *header, const u_char *data, Packet &packet);
+	void writePacket(std::stringstream &ss, const u_char *payload, uint32_t size, const Packet &packet);
 
+	std::string getIp(uint32_t addr);
 public:
 	PacketSniffer(const Configuration &config, std::mutex &control_mutex);
 
