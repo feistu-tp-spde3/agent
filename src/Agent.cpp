@@ -23,16 +23,18 @@ Agent::Agent(const std::string &config_filename) :
 	while (slept < 60)
 	{
 		std::string msg = m_client_comm.getMsg();
-		if (msg == "start")
+		if (msg == "ping")
+		{
+			m_client_comm.sendMsg("pong");
+		}
+		else if (msg == "start")
 		{
 			m_sniffer->start();
 		}
 		else if (msg == "stop")
 		{
+			std::cout << "[Agent] Stopping sniffer on command\n";
 			m_sniffer->stop();
-			
-			std::cout << "[Agent] Stopping\n";
-			break;
 		}
 		else if (msg.find("filter//", 0) != std::string::npos)
 		{
