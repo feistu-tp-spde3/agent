@@ -8,7 +8,7 @@
 #include <sstream>
 
 #include "Configuration.hpp"
-
+#include "ClientComm.hpp"
 
 class PacketSniffer
 {
@@ -28,6 +28,7 @@ private:
 
 	std::mutex &m_control_mutex;
 	const Configuration &m_config;
+	const ClientComm &m_client_comm;
 
 	boost::thread m_sniffer_thread;
 	bool m_run_thread;
@@ -49,7 +50,7 @@ private:
 
 	std::string getIp(uint32_t addr);
 public:
-	PacketSniffer(const Configuration &config, std::mutex &control_mutex);
+	PacketSniffer(const Configuration &config, const ClientComm &client_comm, std::mutex &control_mutex);
 
 	bool init();
 	void start();

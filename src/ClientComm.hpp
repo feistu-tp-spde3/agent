@@ -44,6 +44,8 @@ public:
 	// Acknowledge received message by deleting the previous one
 	void ack();
 
-	const std::string &getMsg() const { return m_client_msg; }
 	bool sendMsg(const std::string &msg) const;
+
+	const std::string &getMsg() const { return m_client_msg; }
+	std::shared_ptr<boost::asio::io_service> getIoService() const { return m_io_service; }
 };

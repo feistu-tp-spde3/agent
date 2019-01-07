@@ -1,4 +1,5 @@
 #include <iostream>
+#include <boost/chrono.hpp>
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -8,8 +9,9 @@
 #include "netdefs.h"
 
 
-PacketSniffer::PacketSniffer(const Configuration &config, std::mutex &control_mutex) :
+PacketSniffer::PacketSniffer(const Configuration &config, const ClientComm &client_comm, std::mutex &control_mutex) :
 	m_config{ config },
+	m_client_comm{ client_comm },
 	m_control_mutex{ control_mutex }
 {
 	;
@@ -100,9 +102,10 @@ void PacketSniffer::start()
 		struct pcap_pkthdr *header;
 		const u_char *packet_data;
 		int res;
+		time_t start = clock();
 
 		std::stringstream packetstream;
-
+		
 		while ((res = pcap_next_ex(m_handle, &header, &packet_data)) >= 0)
 		{
 			if (res == 0)
@@ -118,13 +121,21 @@ void PacketSniffer::start()
 			}
 
 			writePacket(packetstream, packet_data, header->len, packet);
-			std::cout << packetstream.tellp() << "\n";
+			time_t end = clock();
+			unsigned time = static_cast<unsigned>((end - start) / CLOCKS_PER_SEC);
 
-			size_t size_to_send = packetstream.tellp();
-			if (size_to_send >= 65536)
+			if (time >= m_config.getSendingTime())
 			{
+				packetstream << "End of Packets File\n";
+
+				for (auto &col : m_config.getCollectors())
+				{
+					col.send(m_client_comm, packetstream.str());
+				}
+
 				packetstream.str("");
 				packetstream.clear();
+				start = clock();
 			}
 
 			if (!m_run_thread)
@@ -146,6 +157,7 @@ void PacketSniffer::start()
 
 	m_sniffer_thread.detach();
 }
+
 
 bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data, Packet &packet)
 {

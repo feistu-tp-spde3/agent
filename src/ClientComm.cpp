@@ -2,7 +2,6 @@
 
 #include "ClientComm.hpp"
 #include "Configuration.hpp"
-#include "json.hpp"
 
 
 ClientComm::ClientComm(Configuration &config, std::mutex &control_mutex) :
@@ -104,7 +103,7 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 	boost::system::error_code error;
 
 	const std::string msg = m_config.getAgentName();
-	std::size_t bytesSent = boost::asio::write(*m_client, boost::asio::buffer(msg), error);
+	size_t bytesSent = boost::asio::write(*m_client, boost::asio::buffer(msg), error);
 	std::cout << "[ClientComm] Sent identification message(" << bytesSent << "B): " << msg << "\n";
 
 	// ak sa podarilo spojit tak spustime vlakno na prijmanie sprav
@@ -140,7 +139,7 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 				}
 				catch (boost::system::system_error &e)
 				{
-					std::cerr << "[ClientComm] Message couldn't be sent" << std::endl;
+					std::cerr << "[ClientComm] Message couldn't be sent: " << e.what() << std::endl;
 				}
 			}
 		});

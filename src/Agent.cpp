@@ -6,7 +6,7 @@
 Agent::Agent(const std::string &config_filename) :
 	m_config{ Configuration(config_filename, m_control_mutex) },
 	m_client_comm{ ClientComm(m_config, m_control_mutex) },
-	m_sniffer{ std::make_shared<PacketSniffer>(m_config, m_control_mutex) }
+	m_sniffer{ std::make_shared<PacketSniffer>(m_config, m_client_comm, m_control_mutex) }
 {
 	// Initialize the sniffing device. This is only done once.
 	if (!m_sniffer->init())

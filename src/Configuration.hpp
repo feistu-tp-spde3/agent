@@ -70,7 +70,7 @@ private:
 public:
 	Configuration(const std::string &filename, std::mutex &control_mutex);
 
-	const std::vector<Collector> &getCollectors() { return m_collectors; }
+	const std::vector<Collector> &getCollectors() const { return m_collectors; }
 	std::string getFilter() const { return mFilter; }
 
 	unsigned getQueueLenght() const { return mQueueLength; }
