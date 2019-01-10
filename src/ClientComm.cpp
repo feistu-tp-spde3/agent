@@ -107,46 +107,50 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 	std::cout << "[ClientComm] Sent identification message(" << bytesSent << "B): " << msg << "\n";
 
 	// ak sa podarilo spojit tak spustime vlakno na prijmanie sprav
-	if (m_client->is_open())
+	if (!m_client->is_open())
 	{
-		boost::thread t = boost::thread([this]()
-		{
-			char buffer[MAX_BUFFER_SIZE] = { 0 };
-			boost::system::error_code ec;
-
-			while (true)
-			{
-				try
-				{
-					size_t received = m_client->read_some(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), ec);
-					if (ec == boost::asio::error::eof)
-					{
-						std::cout << "[ClientComm] Client dropped\n";
-						m_control_mutex.lock();
-						m_listener_ready = true;
-						m_control_mutex.unlock();
-						break;
-					}
-
-					if (received)
-					{
-						m_control_mutex.lock();
-						std::string message(buffer, received);
-						std::cout << "[ClientComm] Message received: " << message << std::endl;
-						m_client_msg = message;
-						m_control_mutex.unlock();
-					}
-				}
-				catch (boost::system::system_error &e)
-				{
-					std::cerr << "[ClientComm] Message couldn't be sent: " << e.what() << std::endl;
-				}
-			}
-		});
-
-		t.detach();
+		return false;
 	}
 
+	boost::thread t = boost::thread([this]()
+	{
+		while (true)
+		{
+			try
+			{
+				char buffer[MAX_BUFFER_SIZE] = { 0 };
+				boost::system::error_code ec;
+				size_t received = m_client->read_some(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), ec);
+
+				// When the client drops, the error code is different across platforms:
+				// Windows: boost::asio::error::connection_reset
+				// Linux: boost::asio::error::eof
+				if (ec == boost::asio::error::eof || ec == boost::asio::error::connection_reset)
+				{
+					std::cout << "[ClientComm] Client dropped\n";
+					m_control_mutex.lock();
+					m_listener_ready = true;
+					m_control_mutex.unlock();
+					break;
+				}
+
+				if (received)
+				{
+					m_control_mutex.lock();
+					std::string message(buffer, received);
+					std::cout << "[ClientComm] Message received: " << message << std::endl;
+					m_client_msg = message;
+					m_control_mutex.unlock();
+				}
+			}
+			catch (boost::system::system_error &e)
+			{
+				std::cerr << "[ClientComm] Message couldn't be sent: " << e.what() << std::endl;
+			}
+		}
+	});
+
+	t.detach();
 	return true;
 }
 

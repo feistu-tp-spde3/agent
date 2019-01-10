@@ -20,22 +20,21 @@ PacketSniffer::PacketSniffer(const Configuration &config, const ClientComm &clie
 
 bool PacketSniffer::init()
 {
-	char errbuf[PCAP_ERRBUF_SIZE];
-	pcap_if_t *alldevs;
-	pcap_if_t *d;
-	bpf_u_int32 mask;
-	bpf_u_int32 net;
-	int i = 0;
-	int inum;
-
+	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
+	
 	/* Retrieve the device list */
+	pcap_if_t *alldevs;
 	if (pcap_findalldevs(&alldevs, errbuf) == -1)
 	{
-		fprintf(stderr, "Error in pcap_findalldevs: %s\n", errbuf);
+		std::cerr << "[PacketSniffer] Couldn't find capture devices: " << errbuf << "\n";
 		return false;
 	}
 
 	/* Print the list */
+	pcap_if_t *d = nullptr;
+	int i = 0;
+	int inum;
+
 	for (d = alldevs; d; d = d->next)
 	{
 		printf("%d. %s", ++i, d->name);
@@ -62,9 +61,12 @@ bool PacketSniffer::init()
 	m_cap_device = std::string(d->name);
 
 	/* Find the properties for the device */
+	bpf_u_int32 mask;
+	bpf_u_int32 net;
+
 	if (pcap_lookupnet(d->name, &net, &mask, errbuf) == -1)
 	{
-		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", d->name, errbuf);
+		std::cerr << "[PacketSniffer] Couldn't get netmask for device " << m_cap_device << ": " << errbuf << "\n";
 		net = 0;
 		mask = 0;
 	}
@@ -144,14 +146,14 @@ bool PacketSniffer::start()
 				start = clock();
 			}
 
+			m_control_mutex.lock();
 			if (!m_run_thread)
 			{
-				m_control_mutex.lock();
 				std::cout << "[PacketSniffer] Stopped sniffer thread\n";
 				m_run_thread = false;
-				m_control_mutex.unlock();
 				break;
 			}
+			m_control_mutex.unlock();
 		}
 
 		pcap_close(m_handle);
@@ -212,7 +214,7 @@ bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data,
 	}
 	else if (ih->ip_p == IPPROTO_UDP)
 	{
-		const udp_header *uh = (const udp_header *)((const u_char*)ih + size_ip);
+		const udp_header *uh = (const udp_header *)((const u_char *)ih + size_ip);
 		sport = ntohs(uh->uh_sport);
 		dport = ntohs(uh->uh_dport);
 		payload = (const char *)(uh + sizeof(udp_header));
