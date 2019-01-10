@@ -49,7 +49,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 			if (bytesReceived)
 			{
 				std::string message(buffer, bytesReceived);
-				std::cout << "[ClientComm] Message received: " << message << std::endl;
+				std::cout << "[ClientComm] Message received: \"" << message << "\"\n";
 
 				if (message.find("agentSearch", 0) != std::string::npos)
 				{

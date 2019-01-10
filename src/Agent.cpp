@@ -23,6 +23,7 @@ Agent::Agent(const std::string &config_filename) :
 	while (slept < 60)
 	{
 		std::string msg = m_client_comm.getMsg();
+
 		if (msg == "ping")
 		{
 			m_client_comm.sendMsg("pong");
@@ -40,8 +41,20 @@ Agent::Agent(const std::string &config_filename) :
 		{
 			std::string filter = msg.substr(msg.find("filter//", 0) + strlen("filter//"), msg.size());
 
-			std::cout << "[Agent] Changing filter to: \"" << filter << "\"\n";
-			m_sniffer->setFilter(filter);
+			std::cout << "[Agent] Received new filter: \"" << filter << "\"\n";
+
+			// Report to agent monitor
+			std::string error;
+			if (!m_sniffer->setFilter(filter, error))
+			{
+				std::cerr << "[Agent] Failed to change filter: " << error << "\n";
+				m_client_comm.sendMsg(error);
+			}
+			else
+			{
+				std::cout << "[Agent] Filter changed\n";
+				m_client_comm.sendMsg("ok");
+			}
 		}
 		else if (msg == "configlist")
 		{

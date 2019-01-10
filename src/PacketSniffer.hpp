@@ -53,8 +53,8 @@ public:
 	PacketSniffer(const Configuration &config, const ClientComm &client_comm, std::mutex &control_mutex);
 
 	bool init();
-	void start();
+	bool start();
 	void stop();
 
-	void setFilter(const std::string &filter);
+	bool setFilter(const std::string &filter, std::string &error);
 };

@@ -75,37 +75,43 @@ bool PacketSniffer::init()
 }
 
 
-void PacketSniffer::start()
+bool PacketSniffer::start()
 {
-	char errbuf[PCAP_ERRBUF_SIZE];
+	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
 	
-	/* Open the session in promiscuous mode */
+	// TODO: config: snapshot length
+	// TODO: config: promiscuous mode?
+	// TODO: config: read timeout (miliseconds)
 	m_handle = pcap_open_live(m_cap_device.c_str(), 65535, 1, 10, errbuf);
 	if (m_handle == nullptr) {
-		fprintf(stderr, "Couldn't open device %s: %s\n", m_cap_device, errbuf);
-		return;
+		std::cerr << "[PacketSniffer] Couldn't open device " << m_cap_device << ": " << errbuf << "\n";
+		return false;
 	}
 
 	if (pcap_datalink(m_handle) != DLT_EN10MB)
 	{
-		fprintf(stderr, "Only Ethernet networks are supported");
-		return;
+		std::cerr << "[PacketSniffer] Only Ethernet networks are supported\n";
+		return false;
 	}
 
 	std::cout << "[PacketSniffer] Initial filter: \"" << m_filter << "\"\n";
-	setFilter(m_filter);
 
-	// pcap_loop(handle, 0, packetHandler, nullptr);
+	std::string error;
+	if (!setFilter(m_filter, error))
+	{
+		std::cerr << "[PacketSniffer] Failed to set filter: " << error << "\n";
+		return false;
+	}
 
 	m_sniffer_thread = boost::thread([this]()
 	{
-		struct pcap_pkthdr *header;
-		const u_char *packet_data;
-		int res;
-		time_t start = clock();
-
 		std::stringstream packetstream;
 		
+		int res;
+		struct pcap_pkthdr *header;
+		const u_char *packet_data;
+
+		time_t start = clock();
 		while ((res = pcap_next_ex(m_handle, &header, &packet_data)) >= 0)
 		{
 			if (res == 0)
@@ -156,22 +162,15 @@ void PacketSniffer::start()
 	m_control_mutex.unlock();
 
 	m_sniffer_thread.detach();
+
+	return true;
 }
 
 
 bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data, Packet &packet)
 {
-	const ip_header *ih = nullptr;
-	const tcp_header *th = nullptr;
-	const udp_header *uh = nullptr;
-	u_int size_ip;
-	u_int size_tcp;
-	u_short sport, dport;
-	const char *payload = nullptr;
-	u_int payload_size;
-
-	ih = (const ip_header *)(data + sizeof(eth_header));
-	size_ip = IP_HL(ih) * 4;
+	const ip_header *ih = (const ip_header *)(data + sizeof(eth_header));
+	u_int size_ip = IP_HL(ih) * 4;
 	if (size_ip < 20)
 	{
 		// Invalid IP header length
@@ -185,10 +184,13 @@ bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data,
 
 	// std::cout << "len: " << header->len << "\n";
 
+	u_short sport, dport;
+	const char *payload = nullptr;
+	u_int payload_size;
 	if (ih->ip_p == IPPROTO_TCP)
 	{
-		th = (const tcp_header *)((const u_char *)ih + size_ip);
-		size_tcp = TH_OFF(th) * 4;
+		const tcp_header *th = (const tcp_header *)((const u_char *)ih + size_ip);
+		u_int size_tcp = TH_OFF(th) * 4;
 		if (size_tcp < 20)
 		{
 			return false;
@@ -210,10 +212,10 @@ bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data,
 	}
 	else if (ih->ip_p == IPPROTO_UDP)
 	{
-		uh = (const udp_header *)((const u_char*)ih + size_ip);
+		const udp_header *uh = (const udp_header *)((const u_char*)ih + size_ip);
 		sport = ntohs(uh->uh_sport);
 		dport = ntohs(uh->uh_dport);
-		payload = (const char *)(th + sizeof(udp_header));
+		payload = (const char *)(uh + sizeof(udp_header));
 		payload_size = ntohs(uh->uh_len) - sizeof(udp_header);
 
 		/*
@@ -294,24 +296,25 @@ void PacketSniffer::stop()
 }
 
 
-void PacketSniffer::setFilter(const std::string &filter)
+bool PacketSniffer::setFilter(const std::string &filter, std::string &error)
 {
 	if (m_handle == nullptr)
 	{
-		return;
+		return false;
 	}
 
 	bpf_program fp;
 
 	if (pcap_compile(m_handle, &fp, filter.c_str(), 0, m_cap_net) == -1) {
-		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter.c_str(), pcap_geterr(m_handle));
-		return;
+		error = pcap_geterr(m_handle);
+		return false;
 	}
 
 	if (pcap_setfilter(m_handle, &fp) == -1) {
-		fprintf(stderr, "Couldn't install filter %s: %s\n", filter.c_str(), pcap_geterr(m_handle));
-		return;
+		error = pcap_geterr(m_handle);
+		return false;
 	}
 
 	m_filter = filter;
+	return true;
 }

@@ -26,12 +26,13 @@ bool Collector::send(const ClientComm &comm, const std::string &data) const
 	}
 	catch (boost::system::system_error &e)
 	{
-		std::cout << "[Collector] Failed to connect to collector " << m_ip_str << ":" << m_port_str << "\n";
+		std::cerr << "[Collector] Failed to connect to collector " << m_ip_str << ":" << m_port_str << "\n";
 		return false;
 	}
 	
 	try
 	{
+		// Convert data size (32-bit integer) to bytes in little endian order
 		struct {
 			union {
 				uint32_t w;
@@ -41,11 +42,12 @@ bool Collector::send(const ClientComm &comm, const std::string &data) const
 
 		len.w = (uint32_t)data.size();
 
+		// First send a 32-bit unsigned integer representing how many bytes of data we will be sending later
 		boost::system::error_code ec;
 		size_t no_sent = boost::asio::write(receiver, boost::asio::buffer(len.b), ec);
 		if (ec == boost::asio::error::eof)
 		{
-			std::cout << "[Collector] Sending length of data to " << m_ip_str << ":" << m_port_str << " returned EOF\n";
+			std::cerr << "[Collector] Sending length of data to " << m_ip_str << ":" << m_port_str << " returned EOF\n";
 			return false;
 		}
 			
@@ -55,7 +57,7 @@ bool Collector::send(const ClientComm &comm, const std::string &data) const
 
 		if (ec == boost::asio::error::eof)
 		{
-			std::cout << "[Collector] Sending data to " << m_ip_str << ":" << m_port_str << " returned EOF\n";
+			std::cerr << "[Collector] Sending data to " << m_ip_str << ":" << m_port_str << " returned EOF\n";
 			return false;
 		}
 
@@ -71,7 +73,7 @@ bool Collector::send(const ClientComm &comm, const std::string &data) const
 	}
 	catch (boost::system::system_error &e)
 	{
-		std::cout << "[Collector] Failed to send to collector " << m_ip_str << ":" << m_port_str << "\n";
+		std::cerr << "[Collector] Failed to send to collector " << m_ip_str << ":" << m_port_str << "\n";
 		return false;
 	}
 }
