@@ -26,47 +26,55 @@ void ClientComm::waitForClient(uint16_t listener_port)
 
 		listener.set_option(boost::asio::socket_base::broadcast(true));
 
-		int senderPort = -1;
+		int monitor_port = -1;
 		char buffer[MAX_BUFFER_SIZE] = { 0 };
-		size_t bytesReceived = 0;
-		bool messageReceived = false;
+		bool msg_received = false;
 
 		m_control_mutex.lock();
 		m_listener_ready = false;
 		m_control_mutex.unlock();
 
-		while (!messageReceived)
+		while (!msg_received)
 		{
+			size_t no_received = 0;
+
 			try
 			{
-				bytesReceived = listener.receive_from(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), sender_endpoint);
+				no_received = listener.receive_from(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), sender_endpoint);
 			}
 			catch (std::exception &e)
 			{
 				std::cout << "[ClientComm] Exception: " << e.what() << std::endl;
 			}
 
-			if (bytesReceived)
+			if (no_received)
 			{
-				std::string message(buffer, bytesReceived);
+				std::string message(buffer, no_received);
 				std::cout << "[ClientComm] Message received: \"" << message << "\"\n";
 
 				if (message.find("agentSearch", 0) != std::string::npos)
 				{
-					messageReceived = true;
 					listener.close();
 
-					// vyparsovanie portu zo spravy
-					senderPort = atoi(message.substr(message.find("/", 0) + 1, message.size() - message.find("/", 0)).c_str());
+					size_t delim = message.find("/", 0);
+					if (delim)
+					{
+						msg_received = true;
+						monitor_port = std::stoi(message.substr(delim + 1, message.size() - delim));
+					}
+					else
+					{
+						std::cerr << "[ClientComm] Invalid search message received\n";
+					}
 				}
 			}
 
 			boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 		}
 
-		if (messageReceived && senderPort != -1)
+		if (msg_received && monitor_port != -1)
 		{
-			if (!connect(sender_endpoint.address(), senderPort))
+			if (!connect(sender_endpoint.address(), monitor_port))
 			{
 				m_control_mutex.lock();
 				m_listener_ready = true;
@@ -81,7 +89,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 
 bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 {
-	std::cout << "[ClientComm] Establishing connection" << std::endl;
+	std::cout << "[ClientComm] Establishing connection with monitor" << std::endl;
 	boost::this_thread::sleep_for(boost::chrono::milliseconds(CONNECT_TIMEOUT));
 
 	boost::asio::ip::tcp::endpoint endpoint(ip, port);
@@ -95,20 +103,27 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 	}
 	catch (std::exception &e)
 	{
-		std::cout << "[ClientComm] Failed to establish TCP connection to client: " << e.what() << "\n";
+		std::cerr << "[ClientComm] Failed to establish TCP connection to client: " << e.what() << "\n";
 		return false;
 	}
 
-	// odoslanie prvej spravy, ktorou sa identifikuje agent
-	boost::system::error_code error;
-
-	const std::string msg = m_config.getAgentName();
-	size_t bytesSent = boost::asio::write(*m_client, boost::asio::buffer(msg), error);
-	std::cout << "[ClientComm] Sent identification message(" << bytesSent << "B): " << msg << "\n";
-
-	// ak sa podarilo spojit tak spustime vlakno na prijmanie sprav
 	if (!m_client->is_open())
 	{
+		return false;
+	}
+
+	const std::string &msg = m_config.getAgentName();
+
+	// Send identification message to agent
+	boost::system::error_code error;
+	size_t no_sent = boost::asio::write(*m_client, boost::asio::buffer(msg), error);
+	if (no_sent)
+	{
+		std::cout << "[ClientComm] Sent identification mesage \"" << msg << "\" to monitor\n";
+	}
+	else
+	{
+		std::cerr << "[ClientComm] Failed to send identification message, sent " << no_sent << " bytes instead of " << msg.size() << "\n";
 		return false;
 	}
 
@@ -138,7 +153,7 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 				{
 					m_control_mutex.lock();
 					std::string message(buffer, received);
-					std::cout << "[ClientComm] Message received: " << message << std::endl;
+					std::cout << "[ClientComm] Message received: \"" << message << "\"\n";
 					m_client_msg = message;
 					m_control_mutex.unlock();
 				}
@@ -171,17 +186,10 @@ void ClientComm::ack()
 
 bool ClientComm::sendMsg(const std::string &msg) const
 {
-	boost::system::error_code ec;
-
 	try
 	{
-		size_t n_sent = boost::asio::write(*m_client, boost::asio::buffer(msg), ec);
-		if (ec == boost::asio::error::eof)
-		{
-			return false;
-		}
-
-		return n_sent;
+		boost::system::error_code ec;
+		return boost::asio::write(*m_client, boost::asio::buffer(msg), ec);
 	}
 	catch (boost::system::system_error &e)
 	{

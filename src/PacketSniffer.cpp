@@ -96,7 +96,7 @@ bool PacketSniffer::start()
 		return false;
 	}
 
-	std::cout << "[PacketSniffer] Initial filter: \"" << m_filter << "\"\n";
+	std::cout << "[PacketSniffer] Starting sniffer, initial filter: \"" << m_filter << "\"\n";
 
 	std::string error;
 	if (!setFilter(m_filter, error))
@@ -113,7 +113,8 @@ bool PacketSniffer::start()
 		struct pcap_pkthdr *header;
 		const u_char *packet_data;
 
-		time_t start = clock();
+		boost::chrono::time_point<boost::chrono::steady_clock> start = boost::chrono::steady_clock::now();
+
 		while ((res = pcap_next_ex(m_handle, &header, &packet_data)) >= 0)
 		{
 			if (res == 0)
@@ -129,21 +130,29 @@ bool PacketSniffer::start()
 			}
 
 			writePacket(packetstream, packet_data, header->len, packet);
-			time_t end = clock();
-			unsigned time = static_cast<unsigned>((end - start) / CLOCKS_PER_SEC);
 
-			if (time >= m_config.getSendingTime())
+			boost::chrono::time_point<boost::chrono::steady_clock> end = boost::chrono::steady_clock::now();
+			boost::chrono::seconds elapsed = boost::chrono::duration_cast<boost::chrono::seconds>(end - start);
+			if (elapsed.count() >= m_config.getSendingTime())
 			{
 				packetstream << "End of Packets File\n";
 
 				for (auto &col : m_config.getCollectors())
 				{
-					col.send(m_client_comm, packetstream.str());
+					size_t no_sent = 0;
+					if (!col.send(m_client_comm, packetstream.str(), no_sent))
+					{
+						std::cerr << "[PacketSniffer] Failed to send " << packetstream.str().size() << " bytes to collector " << col.getIp() << "\n";
+					}
+					else
+					{
+						std::cout << "[PacketSniffer] Sent " << no_sent << " bytes to collector " << col.getIp() << "\n";
+					}
 				}
 
 				packetstream.str("");
 				packetstream.clear();
-				start = clock();
+				start = boost::chrono::steady_clock::now();
 			}
 
 			m_control_mutex.lock();
@@ -151,6 +160,7 @@ bool PacketSniffer::start()
 			{
 				std::cout << "[PacketSniffer] Stopped sniffer thread\n";
 				m_run_thread = false;
+				m_control_mutex.unlock();
 				break;
 			}
 			m_control_mutex.unlock();
@@ -292,7 +302,6 @@ std::string PacketSniffer::getIp(uint32_t addr)
 void PacketSniffer::stop()
 {
 	m_control_mutex.lock();
-	std::cout << "[PacketSniffer] Stopping sniffer thread\n";
 	m_run_thread = false;
 	m_control_mutex.unlock();
 }

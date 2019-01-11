@@ -22,7 +22,7 @@ Agent::Agent(const std::string &config_filename) :
 	int slept = 0;
 	while (slept < 60)
 	{
-		std::string msg = m_client_comm.getMsg();
+		const std::string &msg = m_client_comm.getMsg();
 
 		if (msg == "ping")
 		{
@@ -30,11 +30,12 @@ Agent::Agent(const std::string &config_filename) :
 		}
 		else if (msg == "start")
 		{
+			std::cout << "[Agent] Starting sniffer\n";
 			m_sniffer->start();
 		}
 		else if (msg == "stop")
 		{
-			std::cout << "[Agent] Stopping sniffer on command\n";
+			std::cout << "[Agent] Stopping sniffer\n";
 			m_sniffer->stop();
 		}
 		else if (msg.find("filter//", 0) != std::string::npos)
@@ -80,7 +81,6 @@ void Agent::spawnServer(uint16_t port)
 		{
 			if (m_client_comm.isListenerReady())
 			{
-				std::cout << "[Agent] Listener ready!\n";
 				m_client_comm.waitForClient(port);
 			}
 

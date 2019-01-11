@@ -16,5 +16,7 @@ private:
 public:
 	Collector(const std::string &ip, const std::string &port);
 
-	bool send(const ClientComm &comm, const std::string &data) const;
+	bool send(const ClientComm &comm, const std::string &data, size_t &no_sent) const;
+
+	const std::string &getIp() const { return m_ip_str; }
 };
