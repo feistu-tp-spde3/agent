@@ -23,7 +23,7 @@ bool PacketSniffer::init()
 	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
 	
 	/* Retrieve the device list */
-	pcap_if_t *alldevs;
+	pcap_if_t *alldevs = nullptr;
 	if (pcap_findalldevs(&alldevs, errbuf) == -1)
 	{
 		std::cerr << "[PacketSniffer] Couldn't find capture devices: " << errbuf << "\n";
@@ -73,7 +73,12 @@ bool PacketSniffer::init()
 
 	m_cap_net = net;
 	m_cap_mask = mask;
-	m_filter = m_config.getAgentFilter();
+	
+	const std::string &cfg_filter = m_config.getAgentFilter();
+	if (!cfg_filter.empty())
+	{
+		m_filter = cfg_filter;
+	}
 
 	return true;
 }

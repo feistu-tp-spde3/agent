@@ -1,23 +1,70 @@
 #include <boost/chrono.hpp>
 
 #include "Agent.hpp"
+#include "ProcessDiscovery.hpp"
 
 
-Agent::Agent(const std::string &config_filename) :
-	m_config{ Configuration(config_filename, m_control_mutex) },
+Agent::Agent() :
+	m_config{ Configuration() },
 	m_client_comm{ ClientComm(m_config, m_control_mutex) },
 	m_sniffer{ std::make_shared<PacketSniffer>(m_config, m_client_comm, m_control_mutex) }
 {
-	// Initialize the sniffing device. This is only done once.
+	;
+}
+
+
+bool Agent::createConfiguration(const std::string &filename)
+{
+	// Error message is printed from the method
+	return m_config.parse(filename);
+}
+
+
+bool Agent::spawnSniffer()
+{
+	// Initialize the sniffing device. This is only done once in lifetime of the agent.
+	// Error message is printed from the method
 	if (!m_sniffer->init())
 	{
-		// Probably dont want exceptions here, whatever..
-		throw std::runtime_error("Failed to initialize sniffer");
+		return false;
 	}
 
-	m_sniffer->start();
+	// Error message is printed from the method
+	if (!m_sniffer->start())
+	{
+		return false;
+	}
 
-	spawnServer(8888);
+	return true;
+}
+
+
+void Agent::spawnCommServer(uint16_t port)
+{
+	boost::thread spawn_thread = boost::thread([this, port]()
+	{
+		while (true)
+		{
+			if (m_client_comm.isListenerReady())
+			{
+				m_client_comm.waitForClient(port);
+			}
+
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(SPAWN_COMM_SERVER_WAIT));
+		}
+	});
+
+	spawn_thread.detach();
+}
+
+
+void Agent::run()
+{
+	ProcessDiscovery pdis;
+	for (const std::string &proc : m_config.getMonitoredProcesses())
+	{
+		std::cout << proc << ": " << pdis.isProcessRunning(proc) << "\n";
+	}
 
 	int slept = 0;
 	while (slept < 60)
@@ -68,23 +115,4 @@ Agent::Agent(const std::string &config_filename) :
 		boost::this_thread::sleep_for(boost::chrono::seconds(1));
 		slept += 1;
 	}
-}
-
-
-void Agent::spawnServer(uint16_t port)
-{
-	boost::thread spawn_thread = boost::thread([this, port]()
-	{
-		while (true)
-		{
-			if (m_client_comm.isListenerReady())
-			{
-				m_client_comm.waitForClient(port);
-			}
-
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(SPAWN_SERVER_TIMEOUT));
-		}
-	});
-
-	spawn_thread.detach();
 }

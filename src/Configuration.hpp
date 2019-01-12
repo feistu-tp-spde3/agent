@@ -5,34 +5,29 @@
 #include <mutex>
 #include <vector>
 
+#include "pugixml.hpp"
 #include "Collector.hpp"
 
 
 class Configuration
 {
 private:
-	std::mutex &m_control_mutex;
-	const std::string &m_filename;
+	pugi::xml_document m_xml;
 
+	std::string m_agent_name;
+	std::string m_agent_filter;
+	std::vector<std::string> m_monitored_processes;
 	std::vector<Collector> m_collectors;
-
-	// cas po ktorom sa odosielaju data na kolektor
 	unsigned int m_send_interval{ 60 };
 
-	// nazov agenta
-	std::string m_agent_name;
-
-	// filter pre packet sniffer
-	std::string m_agent_filter;
-
-	// parsovanie xml dokumentu
-	bool parse();
-
 public:
-	Configuration(const std::string &filename, std::mutex &control_mutex);
+	Configuration();
 
-	const std::vector<Collector> &getCollectors() const { return m_collectors; }
+	bool parse(const std::string &filename);
+
 	const std::string &getAgentName() const { return m_agent_name; }
 	const std::string &getAgentFilter() const { return m_agent_filter; }
+	const std::vector<std::string> &getMonitoredProcesses() const { return m_monitored_processes; }
+	const std::vector<Collector> &getCollectors() const { return m_collectors; }
 	unsigned int getSendInterval() const { return m_send_interval; }
 };

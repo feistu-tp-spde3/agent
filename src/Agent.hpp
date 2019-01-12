@@ -16,11 +16,14 @@ private:
 	std::shared_ptr<PacketSniffer> m_sniffer;
 	ClientComm m_client_comm;
 
-	void spawnServer(uint16_t port);
-
 	// How many miliseconds to wait until spawning listener server
-	static const int SPAWN_SERVER_TIMEOUT{ 1000 };
+	static const int SPAWN_COMM_SERVER_WAIT{ 1000 };
 
 public:
-	Agent(const std::string &config_filename);
+	Agent();
+
+	bool createConfiguration(const std::string &filename);
+	bool spawnSniffer();
+	void spawnCommServer(uint16_t port);
+	void run();
 };

@@ -1,20 +1,22 @@
 #include "Agent.hpp"
 
 
-int main(int argc, char **argv)
+int main()
 {
-	/*
-		Configuration config("config_agent.xml");
-		std::shared_ptr<PacketSniffer> sniffer;
+	Agent agent;
 
+	if (!agent.createConfiguration("config_agent.xml"))
+	{
+		return -1;
+	}
 
-		UdpListener listener(config);
-		listener.run();
+	if (!agent.spawnSniffer())
+	{
+		return -1;
+	}
 
-		sniffer->init(config);
-		sniffer->run(config);
-	*/
-	Agent agent("config_agent.xml");
+	agent.spawnCommServer(8888);
+	agent.run();
 
 	return 0;
 }
