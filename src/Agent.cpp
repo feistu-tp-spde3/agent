@@ -57,10 +57,10 @@ Agent::Agent(const std::string &config_filename) :
 				m_client_comm.sendMsg("ok");
 			}
 		}
-		else if (msg == "configlist")
+		else if (msg == "filter")
 		{
-			std::cout << "Sending message\n";
-			m_client_comm.sendMsg("hello?");
+			std::cout << "[Agent] Sending filter to monitor\n";
+			m_client_comm.sendMsg(m_sniffer->getFilter());
 		}
 
 		m_client_comm.ack();
@@ -68,8 +68,6 @@ Agent::Agent(const std::string &config_filename) :
 		boost::this_thread::sleep_for(boost::chrono::seconds(1));
 		slept += 1;
 	}
-
-	// boost::this_thread::sleep_for(boost::chrono::seconds(30));
 }
 
 

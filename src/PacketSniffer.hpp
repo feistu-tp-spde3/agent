@@ -57,4 +57,5 @@ public:
 	void stop();
 
 	bool setFilter(const std::string &filter, std::string &error);
+	const std::string &getFilter() const { return m_filter; }
 };

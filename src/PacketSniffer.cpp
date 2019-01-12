@@ -73,6 +73,8 @@ bool PacketSniffer::init()
 
 	m_cap_net = net;
 	m_cap_mask = mask;
+	m_filter = m_config.getAgentFilter();
+
 	return true;
 }
 
@@ -133,7 +135,7 @@ bool PacketSniffer::start()
 
 			boost::chrono::time_point<boost::chrono::steady_clock> end = boost::chrono::steady_clock::now();
 			boost::chrono::seconds elapsed = boost::chrono::duration_cast<boost::chrono::seconds>(end - start);
-			if (elapsed.count() >= m_config.getSendingTime())
+			if (elapsed.count() >= m_config.getSendInterval())
 			{
 				packetstream << "End of Packets File\n";
 
