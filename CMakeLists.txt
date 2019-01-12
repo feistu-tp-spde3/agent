@@ -35,5 +35,5 @@ if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
 endif (Boost_FOUND)
 
-add_executable(Agent ${SOURCE_FILES})
-target_link_libraries(Agent ${LIBS} ${Boost_LIBRARIES})
+add_executable(AgentBin ${SOURCE_FILES})
+target_link_libraries(AgentBin ${LIBS} ${Boost_LIBRARIES})
