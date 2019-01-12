@@ -134,6 +134,7 @@
     <ClCompile Include="..\src\Collector.cpp" />
     <ClCompile Include="..\src\Configuration.cpp" />
     <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\src\ProcessDiscovery.cpp" />
     <ClCompile Include="..\src\pugixml.cpp" />
     <ClCompile Include="..\src\PacketSniffer.cpp" />
   </ItemGroup>
@@ -145,6 +146,7 @@
     <ClInclude Include="..\src\json.hpp" />
     <ClInclude Include="..\src\netdefs.h" />
     <ClInclude Include="..\src\PacketSniffer.hpp" />
+    <ClInclude Include="..\src\ProcessDiscovery.hpp" />
     <ClInclude Include="..\src\pugiconfig.hpp" />
     <ClInclude Include="..\src\pugixml.hpp" />
   </ItemGroup>

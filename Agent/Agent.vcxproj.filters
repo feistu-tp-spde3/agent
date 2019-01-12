@@ -36,6 +36,9 @@
     <ClCompile Include="..\src\PacketSniffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\ProcessDiscovery.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pugiconfig.hpp">
@@ -66,6 +69,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\PacketSniffer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ProcessDiscovery.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
