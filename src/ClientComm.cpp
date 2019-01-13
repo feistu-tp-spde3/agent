@@ -7,7 +7,6 @@
 ClientComm::ClientComm(Configuration &config, std::mutex &control_mutex) :
 	m_config{ config },
 	m_control_mutex{ control_mutex },
-	m_client_msg{ "" },
 	m_io_service{ std::make_shared<boost::asio::io_service>() }
 {
 	;
@@ -135,7 +134,7 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 			{
 				char buffer[MAX_BUFFER_SIZE] = { 0 };
 				boost::system::error_code ec;
-				size_t received = m_client->read_some(boost::asio::buffer(buffer, MAX_BUFFER_SIZE), ec);
+				size_t received = m_client->read_some(boost::asio::buffer(buffer), ec);
 
 				// When the client drops, the error code is different across platforms:
 				// Windows: boost::asio::error::connection_reset
@@ -152,9 +151,8 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 				if (received)
 				{
 					m_control_mutex.lock();
-					std::string message(buffer, received);
-					std::cout << "[ClientComm] Message received: \"" << message << "\"\n";
-					m_client_msg = message;
+					m_client_msg = std::make_shared<std::string>(buffer, received);
+					std::cout << "[ClientComm] Message received: \"" << *m_client_msg << "\"\n";
 					m_control_mutex.unlock();
 				}
 			}
@@ -179,7 +177,10 @@ bool ClientComm::isListenerReady() const
 void ClientComm::ack()
 {
 	m_control_mutex.lock();
-	m_client_msg = "";
+	if (m_client_msg)
+	{
+		m_client_msg.reset();
+	}
 	m_control_mutex.unlock();
 }
 

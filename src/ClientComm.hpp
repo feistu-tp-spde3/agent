@@ -23,7 +23,7 @@ private:
 
 	std::shared_ptr<boost::asio::io_service> m_io_service;
 	std::shared_ptr<boost::asio::ip::tcp::socket> m_client;
-	std::string m_client_msg;
+	std::shared_ptr<std::string> m_client_msg;
 
 	// size of receiving buffer from client
 	static const size_t MAX_BUFFER_SIZE{ 1024 };
@@ -46,6 +46,6 @@ public:
 
 	bool sendMsg(const std::string &msg) const;
 
-	const std::string &getMsg() const { return m_client_msg; }
+	const std::shared_ptr<std::string> &getMsg() const { return m_client_msg; }
 	std::shared_ptr<boost::asio::io_service> getIoService() const { return m_io_service; }
 };

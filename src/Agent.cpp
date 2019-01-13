@@ -4,6 +4,9 @@
 #include "ProcessDiscovery.hpp"
 
 
+using json = nlohmann::json;
+
+
 Agent::Agent() :
 	m_config{ Configuration() },
 	m_client_comm{ ClientComm(m_config, m_control_mutex) },
@@ -66,53 +69,138 @@ void Agent::run()
 		std::cout << proc << ": " << pdis.isProcessRunning(proc) << "\n";
 	}
 
-	int slept = 0;
-	while (slept < 60)
+	while (true)
 	{
-		const std::string &msg = m_client_comm.getMsg();
+		// This is supposed to be in JSON
+		if (!m_client_comm.getMsg())
+		{
+			continue;
+		}
 
-		if (msg == "ping")
-		{
-			m_client_comm.sendMsg("pong");
-		}
-		else if (msg == "start")
-		{
-			std::cout << "[Agent] Starting sniffer\n";
-			m_sniffer->start();
-		}
-		else if (msg == "stop")
-		{
-			std::cout << "[Agent] Stopping sniffer\n";
-			m_sniffer->stop();
-		}
-		else if (msg.find("filter//", 0) != std::string::npos)
-		{
-			std::string filter = msg.substr(msg.find("filter//", 0) + strlen("filter//"), msg.size());
+		auto msg = *m_client_comm.getMsg();
 
-			std::cout << "[Agent] Received new filter: \"" << filter << "\"\n";
-
-			// Report to agent monitor
-			std::string error;
-			if (!m_sniffer->setFilter(filter, error))
-			{
-				std::cerr << "[Agent] Failed to change filter: " << error << "\n";
-				m_client_comm.sendMsg(error);
-			}
-			else
-			{
-				std::cout << "[Agent] Filter changed\n";
-				m_client_comm.sendMsg("ok");
-			}
-		}
-		else if (msg == "filter")
+		if (msg.empty())
 		{
-			std::cout << "[Agent] Sending filter to monitor\n";
-			m_client_comm.sendMsg(m_sniffer->getFilter());
+			continue;
+		}
+
+		json json_msg;
+		try
+		{
+			json_msg = json::parse(msg);
+		}
+		catch (json::exception &e)
+		{
+			std::cerr << "[Agent] Invalid json message received (json exception): " << e.what() << "\n";
+			m_client_comm.ack();
+			continue;
+		}
+
+		// Invalid format of the received JSON message
+		if (!json_msg.count("cmd") || !json_msg.count("action") || !json_msg.count("data"))
+		{
+			std::cerr << "[Agent] Json message has invalid format\n";
+			m_client_comm.ack();
+			continue;
+		}
+
+		const std::string &cmd = json_msg["cmd"];
+		bool ok = false;
+		if (cmd == "ping")
+		{
+			ok = cmd_ping();
+		}
+		else if (cmd == "start")
+		{
+			ok = cmd_start();
+		}
+		else if (cmd == "stop")
+		{
+			ok = cmd_stop();
+		}
+		else if (cmd == "filter")
+		{
+			ok = cmd_filter(json_msg);
+		}
+		else if (cmd == "proc")
+		{
+			ok = cmd_proc(json_msg);
+		}
+
+		if (!ok)
+		{
+			std::cerr << "[Agent] Failed to process command \"" << cmd << "\"\n";
 		}
 
 		m_client_comm.ack();
-
-		boost::this_thread::sleep_for(boost::chrono::seconds(1));
-		slept += 1;
 	}
+}
+
+
+bool Agent::cmd_ping()
+{
+	json response;
+	response["response"] = "pong";
+	return m_client_comm.sendMsg(response.dump());
+}
+
+
+bool Agent::cmd_start()
+{
+	std::cout << "[Agent] Starting sniffer\n";
+	return m_sniffer->start();
+}
+
+
+bool Agent::cmd_stop()
+{
+	std::cout << "[Agent] Stopping sniffer\n";
+	m_sniffer->stop();
+	return true;
+}
+
+
+bool Agent::cmd_filter(const json &msg)
+{
+	const std::string &action = msg["action"];
+	if (action == "get")
+	{
+		std::cout << "[Agent] Sending filter to monitor\n";
+
+		json response;
+		response["response"] = m_sniffer->getFilter();
+		m_client_comm.sendMsg(response.dump());
+	}
+	else if (action == "set")
+	{
+		const std::string &filter = msg["data"];
+
+		std::cout << "[Agent] Received new filter: \"" << filter << "\"\n";
+
+		// Report to agent monitor
+		std::string error;
+		json response;
+		if (!m_sniffer->setFilter(filter, error))
+		{
+			std::cerr << "[Agent] Failed to change filter: " << error << "\n";
+			response["response"] = error;
+		}
+		else
+		{
+			std::cout << "[Agent] Filter changed\n";
+			response["response"] = "ok";
+		}
+
+		m_client_comm.sendMsg(response.dump());
+	}
+
+	return true;
+}
+
+
+bool Agent::cmd_proc(const json &msg)
+{
+	std::cout << msg["action"] << "\n";
+	std::cout << msg["data"] << "\n";
+	return true;
 }
