@@ -4,9 +4,27 @@
 - Windows & Linux support, same source code
 - Npcap (https://nmap.org/npcap/) library used for consistent filter syntax (https://linux.die.net/man/7/pcap-filter)
 - Packets are now sent from memory, not through file write & Java process spawn
-- Two-way communication with monitor
-- Respawn monitor listener on monitor disconnect (previously only one monitor could've connected in the lifetime of an agent)
-- (TODO) Monitor running processes (defined in config)
+- Two-way communication with monitor (previously: monitor -> agent)
+- Communication format is JSON (previously: basic text)
+- Respawn monitor listener on monitor disconnect (previously: only one monitor could've connected in the lifetime of the agent)
+- Monitor running processes (defined in xml config)
+- Monitored processes can be added, deleted on-demand & saved to config
+
+monitor -> agent:
+```
+{
+    "cmd": <ping|filter|proc|..>",
+    "action: <get|set|..>",
+    "data": ..
+}
+```
+
+agent -> monitor:
+```
+{
+    "response": ...    
+}
+```
 
 ## Build
 
