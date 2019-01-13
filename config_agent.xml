@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<Configuration>
+	<Sender>
+		<Interval>10</Interval>
+                <Collector>ip:port</Collector>
+	</Sender>
+	<Agent>
+		<Name>AgentA</Name>
+		<Filter>tcp or udp</Filter>
+		<MonitoredProcesses>
+                        <Process>hello.exe</Process>
+                        <Process>world.exe</Process>
+		</MonitoredProcesses>
+	</Agent>
+</Configuration>
