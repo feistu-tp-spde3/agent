@@ -34,10 +34,31 @@ agent -> monitor:
 2. Download "boost_1_68_0-msvc-14.1-32.exe" from https://sourceforge.net/projects/boost/files/boost-binaries/1.68.0/
 3. Download "Latest Npcap release self-installer" from https://nmap.org/download.html (when installing, select Winpcap compat mode)
 4. Download NPCAP SDK https://nmap.org/npcap/dist/npcap-sdk-1.01.zip
-5. Add environment variables BOOST_INCLUDE_PATH, BOOST_LIB_PATH, NPCAP_INCLUDE_PATH, NPCAP_LIB_PATH
+5. Add environment variables `BOOST_INCLUDE_PATH`, `BOOST_LIB_PATH`, `NPCAP_INCLUDE_PATH`, `NPCAP_LIB_PATH`, sample values:
+```
+BOOST_INCLUDE_PATH=C:\boost_1_68_0_32
+BOOST_LIB_PATH=C:\boost_1_68_0_32\lib32-msvc-14.1
+NPCAP_INCLUDE_PATH=C:\npcap\Include
+NPCAP_LIB_PATH=C:\npcap\Lib
+```
 
 ### Linux
 
-1. apt-get install automake
-2. apt-get install libpcap-dev
-3. TBC
+1. sudo apt-get install automake libpcap-dev build-essential
+2. Install boost your preferred way 
+
+If you compiled Boost yourself, change this path in `CMakeLists.txt`:
+```
+set (BOOST_ROOT "/home/user/boost_1_68_0")
+```
+
+If you didn't compile Boost yourself, change this line to FALSE:
+```
+# Set to TRUE if you custom-compiled Boost and then change BOOST_ROOT
+set (Boost_NO_SYSTEM_PATHS TRUE)
+```
+
+```
+cmake .
+make
+```
