@@ -7,16 +7,16 @@ int main()
 
 	if (!agent.createConfiguration("config_agent.xml"))
 	{
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	if (!agent.spawnSniffer())
 	{
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	agent.spawnCommServer(8888);
 	agent.run();
 
-	return 0;
+	return EXIT_SUCCESS;
 }

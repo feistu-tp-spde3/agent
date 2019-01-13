@@ -66,9 +66,10 @@ void Agent::run()
 {
 	while (true)
 	{
-		// This is supposed to be in JSON
+		// This message is supposed to be in JSON
 		if (!m_client_comm.getMsg())
 		{
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(MESSAGE_WAIT));
 			continue;
 		}
 

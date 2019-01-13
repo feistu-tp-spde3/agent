@@ -28,8 +28,11 @@ private:
 	bool cmd_filter(const json &msg);
 	bool cmd_proc(const json &msg);
 
-	// How many miliseconds to wait until spawning listener server
+	// How many milliseconds to wait until spawning listener server
 	static const int SPAWN_COMM_SERVER_WAIT{ 1000 };
+
+	// Wait for message in the main thread (milliseconds)
+	static const int MESSAGE_WAIT{ 100 };
 
 public:
 	Agent();

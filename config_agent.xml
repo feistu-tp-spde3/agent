@@ -11,5 +11,6 @@
                         <Process>hello.exe</Process>
                         <Process>world.exe</Process>
 		</MonitoredProcesses>
+                <SniffInterval>1000</SniffInterval>
 	</Agent>
 </Configuration>

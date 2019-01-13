@@ -70,6 +70,11 @@ bool Configuration::parse(const std::string &filename)
 		m_agent_filter = agent.child("Filter").text().as_string();
 	}
 
+	if (agent.child("SniffInterval"))
+	{
+		m_sniff_interval = agent.child("SniffInterval").text().as_uint();
+	}
+
 	pugi::xml_node monitored_procs = agent.child("MonitoredProcesses");
 	for (pugi::xml_node proc : monitored_procs.children("Process"))
 	{

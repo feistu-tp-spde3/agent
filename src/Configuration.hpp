@@ -19,7 +19,14 @@ private:
 	std::string m_agent_filter;
 	std::vector<std::string> m_monitored_processes;
 	std::vector<Collector> m_collectors;
-	unsigned int m_send_interval{ 60 };
+
+	// Interval in which the packets are read from the device (input to pcap_open)
+	// In miliseconds
+	unsigned int m_sniff_interval{ 1000 };
+		
+	// Interval in which the packets are sent to collectors
+	// In seconds
+	unsigned int m_send_interval{ 10 };
 
 public:
 	Configuration();
@@ -35,5 +42,6 @@ public:
 	const std::string &getAgentFilter() const { return m_agent_filter; }
 	const std::vector<std::string> &getMonitoredProcesses() const { return m_monitored_processes; }
 	const std::vector<Collector> &getCollectors() const { return m_collectors; }
+	unsigned int getSniffInterval() const { return m_sniff_interval; }
 	unsigned int getSendInterval() const { return m_send_interval; }
 };

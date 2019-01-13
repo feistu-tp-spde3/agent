@@ -90,10 +90,8 @@ bool PacketSniffer::start()
 {
 	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
 	
-	// TODO: config: snapshot length
-	// TODO: config: promiscuous mode?
-	// TODO: config: read timeout (miliseconds)
-	m_handle = pcap_open_live(m_cap_device.c_str(), 65535, 1, 10, errbuf);
+	// TODO: config: snapshot length?
+	m_handle = pcap_open_live(m_cap_device.c_str(), 65535, 1, m_config.getSniffInterval(), errbuf);
 	if (m_handle == nullptr) {
 		std::cerr << "[PacketSniffer] Couldn't open device " << m_cap_device << ": " << errbuf << "\n";
 		return false;
