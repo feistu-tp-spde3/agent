@@ -29,6 +29,7 @@ public:
 	bool addMonitoredProcess(const std::string &procname);
 	bool removeMonitoredProcess(const std::string &procname);
 	bool saveConfig();
+	void setAgentFilter(const std::string &filter);
 
 	const std::string &getAgentName() const { return m_agent_name; }
 	const std::string &getAgentFilter() const { return m_agent_filter; }

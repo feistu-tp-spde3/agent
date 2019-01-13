@@ -198,6 +198,23 @@ bool Configuration::saveConfig()
 }
 
 
+void Configuration::setAgentFilter(const std::string &filter)
+{
+	pugi::xml_node agent = m_xml.child("Configuration").child("Agent");
+	
+	pugi::xml_node fnode = agent.child("Filter");
+	if (!fnode)
+	{
+		fnode = agent.append_child("Filter");
+		fnode.append_child(pugi::node_pcdata).set_value(filter.c_str());
+	}
+	else
+	{
+		fnode.text().set(filter.c_str());
+	}
+}
+
+
 /*
 void Configuration::createDirectory()
 {

@@ -191,7 +191,15 @@ bool Agent::cmd_filter(const json &msg)
 			response["response"] = "ok";
 		}
 
-		return m_client_comm.sendMsg(response.dump());
+		m_config.setAgentFilter(filter);
+
+		if (!m_client_comm.sendMsg(response.dump()))
+		{
+			std::cerr << "[Agent] Failed to send set filter response to monitor\n";
+			return false;
+		}
+
+		return m_config.saveConfig();
 	}
 
 	return true;
