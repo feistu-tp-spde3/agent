@@ -1,4 +1,4 @@
-#include <chrono>
+#include <boost/chrono.hpp>
 
 #include "ClientComm.hpp"
 #include "Configuration.hpp"
@@ -15,7 +15,7 @@ ClientComm::ClientComm(Configuration &config, std::mutex &control_mutex) :
 
 void ClientComm::waitForClient(uint16_t listener_port)
 {
-	m_listener_thread = std::thread([this, listener_port]()
+	m_listener_thread = boost::thread([this, listener_port]()
 	{
 		std::cout << "[ClientComm] Launching communication thread on port " << listener_port << std::endl;
 
@@ -71,7 +71,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 				}
 			}
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 		}
 
 		if (msg_received && monitor_port != -1)
@@ -92,7 +92,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 {
 	std::cout << "[ClientComm] Establishing connection with monitor" << std::endl;
-	std::this_thread::sleep_for(std::chrono::milliseconds(CONNECT_TIMEOUT));
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(CONNECT_TIMEOUT));
 
 	boost::asio::ip::tcp::endpoint endpoint(ip, port);
 
@@ -129,7 +129,7 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 		return false;
 	}
 
-	std::thread t = std::thread([this]()
+	boost::thread t = boost::thread([this]()
 	{
 		while (true)
 		{

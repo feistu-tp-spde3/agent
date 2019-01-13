@@ -1,6 +1,6 @@
 #include <iostream>
-#include <thread>
-#include <chrono>
+#include <boost/thread.hpp>
+#include <boost/chrono.hpp>
 
 #include "Collector.hpp"
 #include "ClientComm.hpp"
@@ -52,11 +52,12 @@ bool Collector::send(const ClientComm &comm, const std::string &data, size_t &no
 		}
 			
 		no_sent = boost::asio::write(receiver, boost::asio::buffer(data), ec);
-		std::this_thread::sleep_for(std::chrono::seconds(2));
+		boost::this_thread::sleep_for(boost::chrono::seconds(2));
 		return no_sent;
 	}
 	catch (boost::system::system_error &e)
 	{
+		std::cerr << "[Collector] Failed to send message: " << e.what() << "\n";
 		return false;
 	}
 }

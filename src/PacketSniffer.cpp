@@ -1,6 +1,7 @@
+#include <boost/chrono.hpp>
 #include <iostream>
 #include <iomanip>
-#include <chrono>
+
 
 #ifdef __linux__
 #include <arpa/inet.h>
@@ -113,7 +114,7 @@ bool PacketSniffer::start()
 		return false;
 	}
 
-	m_sniffer_thread = std::thread([this]()
+	m_sniffer_thread = boost::thread([this]()
 	{
 		std::stringstream packetstream;
 		
@@ -121,7 +122,7 @@ bool PacketSniffer::start()
 		struct pcap_pkthdr *header;
 		const u_char *packet_data;
 
-		std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
+		boost::chrono::time_point<boost::chrono::steady_clock> start = boost::chrono::steady_clock::now();
 
 		while ((res = pcap_next_ex(m_handle, &header, &packet_data)) >= 0)
 		{
@@ -139,8 +140,8 @@ bool PacketSniffer::start()
 
 			writePacket(packetstream, packet_data, header->len, packet);
 
-			std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
-			std::chrono::seconds elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+			boost::chrono::time_point<boost::chrono::steady_clock> end = boost::chrono::steady_clock::now();
+			boost::chrono::seconds elapsed = boost::chrono::duration_cast<boost::chrono::seconds>(end - start);
 			if (elapsed.count() >= m_config.getSendInterval())
 			{
 				packetstream << "End of Packets File\n";
@@ -160,7 +161,7 @@ bool PacketSniffer::start()
 
 				packetstream.str("");
 				packetstream.clear();
-				start = std::chrono::steady_clock::now();
+				start = boost::chrono::steady_clock::now();
 			}
 
 			m_control_mutex.lock();

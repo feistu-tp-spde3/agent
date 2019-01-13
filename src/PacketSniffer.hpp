@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 #include <mutex>
 #include <thread>
 #include <pcap.h>
@@ -31,7 +32,7 @@ private:
 	const Configuration &m_config;
 	const ClientComm &m_client_comm;
 
-	std::thread m_sniffer_thread;
+	boost::thread m_sniffer_thread;
 	bool m_run_thread;
 
 	// Name of the device we capture packets on

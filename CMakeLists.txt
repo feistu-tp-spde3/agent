@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 2.8.6)
 set (Agent_VERSION_MAJOR 1)
 set (Agent_VERSION_MINOR 0)
 
-set (TARGET_NAME Agent)
+set (TARGET_NAME AgentBin)
 
 file (GLOB CPP_FILES src/*.cpp)
 file (GLOB HPP_FILES src/*.hpp)
@@ -35,5 +35,9 @@ if (Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
 endif (Boost_FOUND)
 
-add_executable(AgentBin ${SOURCE_FILES})
-target_link_libraries(AgentBin ${LIBS} ${Boost_LIBRARIES})
+add_executable(${TARGET_NAME} ${SOURCE_FILES})
+target_link_libraries(${TARGET_NAME} ${LIBS} ${Boost_LIBRARIES})
+
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.1)
+    target_compile_options(${TARGET_NAME} PRIVATE -std=c++11)
+endif ()

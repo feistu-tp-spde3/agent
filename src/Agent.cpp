@@ -1,4 +1,5 @@
-#include <chrono>
+#include <boost/thread.hpp>
+#include <boost/chrono.hpp>
 
 #include "Agent.hpp"
 #include "ProcessDiscovery.hpp"
@@ -44,7 +45,7 @@ bool Agent::spawnSniffer()
 
 void Agent::spawnCommServer(uint16_t port)
 {
-	std::thread spawn_thread = std::thread([this, port]()
+	boost::thread spawn_thread = boost::thread([this, port]()
 	{
 		while (true)
 		{
@@ -53,7 +54,7 @@ void Agent::spawnCommServer(uint16_t port)
 				m_client_comm.waitForClient(port);
 			}
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(SPAWN_COMM_SERVER_WAIT));
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(SPAWN_COMM_SERVER_WAIT));
 		}
 	});
 
