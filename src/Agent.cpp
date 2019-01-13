@@ -63,12 +63,6 @@ void Agent::spawnCommServer(uint16_t port)
 
 void Agent::run()
 {
-	ProcessDiscovery pdis;
-	for (const std::string &proc : m_config.getMonitoredProcesses())
-	{
-		std::cout << proc << ": " << pdis.isProcessRunning(proc) << "\n";
-	}
-
 	while (true)
 	{
 		// This is supposed to be in JSON
