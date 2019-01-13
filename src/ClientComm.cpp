@@ -1,4 +1,4 @@
-#include <boost/chrono.hpp>
+#include <chrono>
 
 #include "ClientComm.hpp"
 #include "Configuration.hpp"
@@ -15,14 +15,17 @@ ClientComm::ClientComm(Configuration &config, std::mutex &control_mutex) :
 
 void ClientComm::waitForClient(uint16_t listener_port)
 {
-	m_listener_thread = boost::thread([this, listener_port]()
+	m_listener_thread = std::thread([this, listener_port]()
 	{
 		std::cout << "[ClientComm] Launching communication thread on port " << listener_port << std::endl;
 
 		boost::system::error_code error;
+
+		// This can throw an exception if an agent is already running
+		// TODO
 		boost::asio::ip::udp::socket listener(*m_io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), listener_port));
 		boost::asio::ip::udp::endpoint sender_endpoint;
-
+		
 		listener.set_option(boost::asio::socket_base::broadcast(true));
 
 		int monitor_port = -1;
@@ -68,7 +71,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 				}
 			}
 
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 
 		if (msg_received && monitor_port != -1)
@@ -89,7 +92,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 {
 	std::cout << "[ClientComm] Establishing connection with monitor" << std::endl;
-	boost::this_thread::sleep_for(boost::chrono::milliseconds(CONNECT_TIMEOUT));
+	std::this_thread::sleep_for(std::chrono::milliseconds(CONNECT_TIMEOUT));
 
 	boost::asio::ip::tcp::endpoint endpoint(ip, port);
 
@@ -126,7 +129,7 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 		return false;
 	}
 
-	boost::thread t = boost::thread([this]()
+	std::thread t = std::thread([this]()
 	{
 		while (true)
 		{

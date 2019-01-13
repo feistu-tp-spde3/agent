@@ -1,6 +1,5 @@
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
 
 #include "Configuration.hpp"
 
@@ -201,7 +200,7 @@ bool Configuration::saveConfig()
 void Configuration::setAgentFilter(const std::string &filter)
 {
 	pugi::xml_node agent = m_xml.child("Configuration").child("Agent");
-	
+
 	pugi::xml_node fnode = agent.child("Filter");
 	if (!fnode)
 	{
@@ -213,21 +212,3 @@ void Configuration::setAgentFilter(const std::string &filter)
 		fnode.text().set(filter.c_str());
 	}
 }
-
-
-/*
-void Configuration::createDirectory()
-{
-	boost::filesystem::path current_directory(boost::filesystem::current_path());
-	boost::filesystem::path data_path = current_directory / boost::filesystem::path(mDirectory);
-
-	if (!boost::filesystem::exists(data_path))
-	{
-		boost::filesystem::create_directory(data_path);
-	}
-	else
-	{
-		std::cout << "[Configuration] Directory " << data_path << " already exists!" << std::endl;
-	}
-}
-*/

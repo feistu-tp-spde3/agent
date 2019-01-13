@@ -2,7 +2,7 @@
 
 
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 #include <iostream>
 #include <exception>
 #include <mutex>
@@ -18,7 +18,7 @@ private:
 	std::mutex &m_control_mutex;
 	Configuration &m_config;
 
-	boost::thread m_listener_thread;
+	std::thread m_listener_thread;
 	bool m_listener_ready{ true };
 
 	std::shared_ptr<boost::asio::io_service> m_io_service;
