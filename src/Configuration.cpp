@@ -22,7 +22,8 @@ Configuration::Configuration()
 
 bool Configuration::parse(const std::string &filename)
 {
-	std::cout << "[Configuration] Creating configuration\n";
+	m_filename = filename;
+	std::cout << "[Configuration] Creating configuration from file \"" << filename << "\"\n";
 
 	boost::filesystem::path path(boost::filesystem::current_path());
 
@@ -85,7 +86,7 @@ bool Configuration::parse(const std::string &filename)
 	pugi::xml_node sender = configuration.child("Sender");
 	if (sender)
 	{
-		for (pugi::xml_node node : sender.children("Collector"))
+		for (const pugi::xml_node &node : sender.children("Collector"))
 		{
 			std::string host = node.text().as_string();
 			size_t delim = host.find(":", 0);
@@ -109,6 +110,91 @@ bool Configuration::parse(const std::string &filename)
 	}
 
 	return true;
+}
+
+
+bool Configuration::addMonitoredProcess(const std::string &procname)
+{
+	// It could have been a set.. but NO
+	for (const std::string &p : m_monitored_processes)
+	{
+		if (p == procname)
+		{
+			return false;
+		}
+	}
+
+	m_monitored_processes.push_back(procname);
+
+	// The config is guaranteed to have <Agent> inside <Configuration> node, if this fails, it's bad
+	pugi::xml_node agent = m_xml.child("Configuration").child("Agent");
+
+	pugi::xml_node monitored = agent.child("MonitoredProcesses");
+	if (!monitored)
+	{
+		monitored = agent.append_child("MonitoredProcesses");
+	}
+
+	pugi::xml_node proc = monitored.append_child("Process");
+	proc.append_child(pugi::node_pcdata).set_value(procname.c_str());
+
+	return saveConfig();
+}
+
+
+bool Configuration::removeMonitoredProcess(const std::string &procname)
+{
+	bool found = false;
+	std::vector<std::string>::iterator it = m_monitored_processes.begin();
+	while (it != m_monitored_processes.end())
+	{
+		if (procname == *it)
+		{
+			it = m_monitored_processes.erase(it);
+			found = true;
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	if (!found)
+	{
+		return false;
+	}
+
+	pugi::xml_node agent = m_xml.child("Configuration").child("Agent");
+	pugi::xml_node monitored = agent.child("MonitoredProcesses");
+	if (!monitored)
+	{
+		return false;
+	}
+
+	std::vector<pugi::xml_node> nodes_to_remove;
+
+	// Removing while iterating doesn't work even with ::iterator and stuff like that..
+	for (pugi::xml_node node : monitored.children("Process"))
+	{
+		const std::string &value = node.text().as_string();
+		if (procname == value)
+		{
+			nodes_to_remove.push_back(node);
+		}
+	}
+
+	for (pugi::xml_node node : nodes_to_remove)
+	{
+		monitored.remove_child(node);
+	}
+
+	return saveConfig();
+}
+
+
+bool Configuration::saveConfig()
+{
+	return m_xml.save_file(m_filename.c_str());
 }
 
 

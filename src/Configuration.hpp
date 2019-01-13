@@ -12,6 +12,7 @@
 class Configuration
 {
 private:
+	std::string m_filename;
 	pugi::xml_document m_xml;
 
 	std::string m_agent_name;
@@ -24,6 +25,10 @@ public:
 	Configuration();
 
 	bool parse(const std::string &filename);
+
+	bool addMonitoredProcess(const std::string &procname);
+	bool removeMonitoredProcess(const std::string &procname);
+	bool saveConfig();
 
 	const std::string &getAgentName() const { return m_agent_name; }
 	const std::string &getAgentFilter() const { return m_agent_filter; }

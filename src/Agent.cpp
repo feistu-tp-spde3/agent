@@ -169,7 +169,7 @@ bool Agent::cmd_filter(const json &msg)
 
 		json response;
 		response["response"] = m_sniffer->getFilter();
-		m_client_comm.sendMsg(response.dump());
+		return m_client_comm.sendMsg(response.dump());
 	}
 	else if (action == "set")
 	{
@@ -191,7 +191,7 @@ bool Agent::cmd_filter(const json &msg)
 			response["response"] = "ok";
 		}
 
-		m_client_comm.sendMsg(response.dump());
+		return m_client_comm.sendMsg(response.dump());
 	}
 
 	return true;
@@ -200,7 +200,61 @@ bool Agent::cmd_filter(const json &msg)
 
 bool Agent::cmd_proc(const json &msg)
 {
-	std::cout << msg["action"] << "\n";
-	std::cout << msg["data"] << "\n";
+	const std::string &action = msg["action"];
+	if (action == "get")
+	{
+		ProcessDiscovery pd;
+
+		json response;
+		for (const std::string &procname : m_config.getMonitoredProcesses())
+		{
+			response["response"][procname] = pd.isProcessRunning(procname);
+		}
+
+		return m_client_comm.sendMsg(response.dump());
+	}
+	else if (action == "add")
+	{
+		if (!msg["data"].is_string())
+		{
+			return false;
+		}
+
+		const std::string &procname = msg["data"];
+
+		json response;
+		if (!m_config.addMonitoredProcess(procname))
+		{
+			response["response"] = "no";
+		}
+		else
+		{
+			response["response"] = "ok";
+		}
+
+		return m_client_comm.sendMsg(response.dump());
+	}
+	else if (action == "del")
+	{
+		if (!msg["data"].is_string())
+		{
+			return false;
+		}
+
+		const std::string &procname = msg["data"];
+
+		json response;
+		if (!m_config.removeMonitoredProcess(procname))
+		{
+			response["response"] = "no";
+		}
+		else
+		{
+			response["response"] = "ok";
+		}
+
+		return m_client_comm.sendMsg(response.dump());
+	}
+
 	return true;
 }
