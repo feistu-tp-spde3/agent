@@ -210,6 +210,10 @@ bool Agent::cmd_proc(const json &msg)
 		ProcessDiscovery pd;
 
 		json response;
+
+		// This needs to be an empty object in case there are no monitored processes
+		// because monitor will think no data was sent
+		response["response"] = json::object();
 		for (const std::string &procname : m_config.getMonitoredProcesses())
 		{
 			response["response"][procname] = pd.isProcessRunning(procname);
