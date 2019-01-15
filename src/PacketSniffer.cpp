@@ -90,8 +90,18 @@ bool PacketSniffer::start()
 {
 	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
 	
+	std::cout << "[PacketSniffer] Snaplen: " << m_config.getSniffSnaplen() << "\n";
+	std::cout << "[PacketSniffer] Promiscuous mode: " << m_config.getSniffPromiscMode() << "\n";
+	std::cout << "[PacketSniffer] Sniff interval: " << m_config.getSniffInterval() << "\n";
+
 	// TODO: config: snapshot length?
-	m_handle = pcap_open_live(m_cap_device.c_str(), 65535, 1, m_config.getSniffInterval(), errbuf);
+	m_handle = pcap_open_live(
+		m_cap_device.c_str(),
+		m_config.getSniffSnaplen(),
+		m_config.getSniffPromiscMode(),
+		m_config.getSniffInterval(),
+		errbuf);
+
 	if (m_handle == nullptr) {
 		std::cerr << "[PacketSniffer] Couldn't open device " << m_cap_device << ": " << errbuf << "\n";
 		return false;
@@ -136,11 +146,12 @@ bool PacketSniffer::start()
 				continue;
 			}
 
-			writePacket(packetstream, packet_data, header->len, packet);
+			writePacket(packetstream, packet_data, header->caplen, packet);
 
 			boost::chrono::time_point<boost::chrono::steady_clock> end = boost::chrono::steady_clock::now();
 			boost::chrono::seconds elapsed = boost::chrono::duration_cast<boost::chrono::seconds>(end - start);
-			if (elapsed.count() >= m_config.getSendInterval())
+
+			if (elapsed.count() >= m_config.getSendInterval() || packetstream.tellp() >= m_config.getSendSize())
 			{
 				packetstream << "End of Packets File\n";
 

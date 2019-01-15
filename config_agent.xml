@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <Configuration>
-	<Sender>
+    <Sender>
+                <BufferSize>128000</BufferSize>
 		<Interval>10</Interval>
                 <Collector>ip:port</Collector>
 	</Sender>
@@ -12,5 +13,7 @@
                         <Process>world.exe</Process>
 		</MonitoredProcesses>
                 <SniffInterval>1000</SniffInterval>
+                <SniffSnapLen>2048</SniffSnapLen>
+                <SniffPromiscMode>false</SniffPromiscMode>
 	</Agent>
 </Configuration>

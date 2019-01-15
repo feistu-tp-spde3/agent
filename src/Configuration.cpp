@@ -75,6 +75,16 @@ bool Configuration::parse(const std::string &filename)
 		m_sniff_interval = agent.child("SniffInterval").text().as_uint();
 	}
 
+	if (agent.child("SniffSnapLen"))
+	{
+		m_sniff_snaplen = agent.child("SniffSnapLen").text().as_uint();
+	}
+
+	if (agent.child("SniffPromiscMode"))
+	{
+		m_sniff_promisc = agent.child("SniffPromiscMode").text().as_bool();
+	}
+
 	pugi::xml_node monitored_procs = agent.child("MonitoredProcesses");
 	for (pugi::xml_node proc : monitored_procs.children("Process"))
 	{
@@ -110,6 +120,11 @@ bool Configuration::parse(const std::string &filename)
 		if (sender.child("Interval"))
 		{
 			m_send_interval = sender.child("Interval").text().as_uint();
+		}
+
+		if (sender.child("BufferSize"))
+		{
+			m_send_size = sender.child("BufferSize").text().as_uint();
 		}
 	}
 
