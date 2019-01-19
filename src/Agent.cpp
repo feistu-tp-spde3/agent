@@ -19,7 +19,7 @@ Agent::Agent() :
 
 bool Agent::createConfiguration(const std::string &filename)
 {
-	// Error message is printed from the method
+	// Error message is printed from the parse method
 	return m_config.parse(filename);
 }
 
@@ -39,6 +39,7 @@ bool Agent::spawnSniffer()
 		return false;
 	}
 
+	// Yes, this function could have had one-line return statement, but it's ugly
 	return true;
 }
 
@@ -69,6 +70,7 @@ void Agent::run()
 		// This message is supposed to be in JSON
 		if (!m_client_comm.getMsg())
 		{
+			// Without the wait, this loop was hogging 1 full CPU core
 			boost::this_thread::sleep_for(boost::chrono::milliseconds(MESSAGE_WAIT));
 			continue;
 		}

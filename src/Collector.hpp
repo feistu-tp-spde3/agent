@@ -13,6 +13,9 @@ private:
 	std::string m_ip_str;
 	std::string m_port_str;
 
+	// Wait this many miliseconds after each successful send
+	static const int SEND_WAIT{ 2000 };
+
 public:
 	Collector(const std::string &ip, const std::string &port);
 

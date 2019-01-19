@@ -4,17 +4,16 @@
 
 #include <cstdint>
 
-/* Ethernet addresses are 6 bytes */
 #define ETHER_ADDR_LEN 6
 #define ETHERTYPE_IP 0x0800 
 #define ETHERTYPE_ARP 0x0806
 
-/* Ethernet header */
+// ETHERNET HEADER
 struct eth_header
 {
-	uint8_t ether_dhost[ETHER_ADDR_LEN]; /* Destination host address */
-	uint8_t ether_shost[ETHER_ADDR_LEN]; /* Source host address */
-	uint16_t ether_type; /* IP? ARP? RARP? etc */
+	uint8_t ether_dhost[ETHER_ADDR_LEN]; // Destination host address
+	uint8_t ether_shost[ETHER_ADDR_LEN]; // Source host address
+	uint16_t ether_type; // IP? ARP? RARP? etc
 };
 
 union ip_address {
@@ -27,7 +26,7 @@ union ip_address {
 	uint32_t w;
 };
 
-/* IP header */
+// IP HEADER
 struct ip_header
 {
 	uint8_t ip_vhl;			/* version << 4 | header length >> 2 */
@@ -54,7 +53,7 @@ struct ip_header
 #define IP_HL(ip)		(((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)		(((ip)->ip_vhl) >> 4)
 
-/* TCP header */
+// TCP HEADER
 typedef uint32_t tcp_seq;
 
 struct tcp_header
@@ -80,7 +79,7 @@ struct tcp_header
 	uint16_t th_urp;		/* urgent pointer */
 };
 
-/* UDP header*/
+// UDP HEADER
 struct udp_header
 {
 	uint16_t uh_sport;		// Source port
@@ -88,3 +87,39 @@ struct udp_header
 	uint16_t uh_len;		// Datagram length
 	uint16_t uh_crc;		// Checksum
 };
+
+// ICMP HEADER
+struct icmp_header
+{
+	u_int8_t type;	/* message type */
+	u_int8_t code;	/* type sub-code */
+	u_int16_t checksum;
+	union
+	{
+		struct
+		{
+			u_int16_t id;
+			u_int16_t sequence;
+		} echo;				/* echo datagram */
+		u_int32_t gateway;  /* gateway address */
+		struct
+		{
+			u_int16_t __unused;
+			u_int16_t mtu;
+		} frag; /* path mtu discovery */
+	} un;
+};
+
+#define ICMP_ECHOREPLY		0	// Echo Reply
+#define ICMP_DEST_UNREACH	3	// Destination Unreachable
+#define ICMP_SOURCE_QUENCH	4	// Source Quench
+#define ICMP_REDIRECT		5	// Redirect (change route)
+#define ICMP_ECHO			8	// Echo Request
+#define ICMP_TIME_EXCEEDED	11	// Time Exceeded
+#define ICMP_PARAMETERPROB	12	// Parameter Problem
+#define ICMP_TIMESTAMP		13	// Timestamp Request
+#define ICMP_TIMESTAMPREPLY	14	// Timestamp Reply
+#define ICMP_INFO_REQUEST	15	// Information Request
+#define ICMP_INFO_REPLY		16	// Information Reply
+#define ICMP_ADDRESS		17	// Address Mask Request
+#define ICMP_ADDRESSREPLY	18	// Address Mask Reply

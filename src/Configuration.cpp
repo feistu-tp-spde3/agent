@@ -4,15 +4,6 @@
 #include "Configuration.hpp"
 
 
-#ifdef WIN32
-#include <direct.h>
-#include <Windows.h>
-#elif __linux__
-#include <unistd.h>
-#include <netdb.h>
-#endif
-
-
 Configuration::Configuration()
 {
 	;
@@ -86,7 +77,7 @@ bool Configuration::parse(const std::string &filename)
 	}
 
 	pugi::xml_node monitored_procs = agent.child("MonitoredProcesses");
-	for (pugi::xml_node proc : monitored_procs.children("Process"))
+	for (const pugi::xml_node &proc : monitored_procs.children("Process"))
 	{
 		if (proc.text().empty())
 		{
@@ -134,7 +125,7 @@ bool Configuration::parse(const std::string &filename)
 
 bool Configuration::addMonitoredProcess(const std::string &procname)
 {
-	// It could have been a set.. but NO
+	// It could have been a set maybe
 	for (const std::string &p : m_monitored_processes)
 	{
 		if (p == procname)

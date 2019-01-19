@@ -7,10 +7,10 @@
 
 
 Collector::Collector(const std::string &ip, const std::string &port) :
-	m_ip_str(ip),
-	m_port_str(port)
+	m_ip_str{ ip },
+	m_port_str{ port }
 {
-
+	;
 }
 
 
@@ -28,12 +28,14 @@ bool Collector::send(const ClientComm &comm, const std::string &data, size_t &no
 	}
 	catch (boost::system::system_error &e)
 	{
+		std::cerr << "[Collector] Failed to connect to " << m_ip_str << ":" << m_port_str << ": " << e.what() << "\n";
 		return false;
 	}
 	
 	try
 	{
 		// Convert data size (32-bit integer) to bytes in little endian order
+		// It's easier to send the message length this way
 		struct {
 			union {
 				uint32_t w;
@@ -52,7 +54,7 @@ bool Collector::send(const ClientComm &comm, const std::string &data, size_t &no
 		}
 			
 		no_sent = boost::asio::write(receiver, boost::asio::buffer(data), ec);
-		boost::this_thread::sleep_for(boost::chrono::seconds(2));
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(SEND_WAIT));
 		return no_sent;
 	}
 	catch (boost::system::system_error &e)

@@ -92,7 +92,7 @@ void ClientComm::waitForClient(uint16_t listener_port)
 bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 {
 	std::cout << "[ClientComm] Establishing connection with monitor" << std::endl;
-	boost::this_thread::sleep_for(boost::chrono::milliseconds(CONNECT_TIMEOUT));
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(CONNECT_WAIT));
 
 	boost::asio::ip::tcp::endpoint endpoint(ip, port);
 
@@ -114,9 +114,10 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 		return false;
 	}
 
-	const std::string &msg = m_config.getAgentName();
+	const std::string &agent_name = m_config.getAgentName();
+	const std::string msg = "agentName/" + agent_name;
 
-	// Send identification message to agent
+	// Send identification message to monitor
 	boost::system::error_code error;
 	size_t no_sent = boost::asio::write(*m_client, boost::asio::buffer(msg), error);
 	if (no_sent)
@@ -168,12 +169,6 @@ bool ClientComm::connect(const boost::asio::ip::address &ip, uint16_t port)
 
 	t.detach();
 	return true;
-}
-
-
-bool ClientComm::isListenerReady() const
-{
-	return m_listener_ready;
 }
 
 

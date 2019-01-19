@@ -99,6 +99,7 @@ pid_t ProcessDiscovery::getProcessPidByName(const std::string &procName)
 	return pid;
 }
 
+
 bool ProcessDiscovery::isProcessRunning(const std::string &processName)
 {
 	pid_t pid = getProcessPidByName(processName);

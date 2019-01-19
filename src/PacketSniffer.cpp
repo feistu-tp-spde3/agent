@@ -4,6 +4,7 @@
 
 
 #ifdef __linux__
+// Needed for ntohs/htons functions
 #include <arpa/inet.h>
 #endif
 
@@ -24,7 +25,6 @@ bool PacketSniffer::init()
 {
 	char errbuf[PCAP_ERRBUF_SIZE] = { 0 };
 	
-	/* Retrieve the device list */
 	pcap_if_t *alldevs = nullptr;
 	if (pcap_findalldevs(&alldevs, errbuf) == -1)
 	{
@@ -32,7 +32,6 @@ bool PacketSniffer::init()
 		return false;
 	}
 
-	/* Print the list */
 	pcap_if_t *d = nullptr;
 	int i = 0;
 	int inum;
@@ -52,17 +51,14 @@ bool PacketSniffer::init()
 	if (inum < 1 || inum > i)
 	{
 		printf("\nInterface number out of range.\n");
-		/* Free the device list */
 		pcap_freealldevs(alldevs);
 		return false;
 	}
 
-	/* Jump to the selected adapter */
 	for (d = alldevs, i = 0; i < inum - 1; d = d->next, i++);
 
 	m_cap_device = std::string(d->name);
 
-	/* Find the properties for the device */
 	bpf_u_int32 mask;
 	bpf_u_int32 net;
 
@@ -94,7 +90,6 @@ bool PacketSniffer::start()
 	std::cout << "[PacketSniffer] Promiscuous mode: " << m_config.getSniffPromiscMode() << "\n";
 	std::cout << "[PacketSniffer] Sniff interval: " << m_config.getSniffInterval() << "\n";
 
-	// TODO: config: snapshot length?
 	m_handle = pcap_open_live(
 		m_cap_device.c_str(),
 		m_config.getSniffSnaplen(),
@@ -199,6 +194,9 @@ bool PacketSniffer::start()
 
 bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data, Packet &packet)
 {
+	// This whole method doesn't use things like reinterpret_cast, const_cast etc. because there's no
+	// point to do that with raw buffers anyway
+
 	const ip_header *ih = (const ip_header *)(data + sizeof(eth_header));
 	u_int size_ip = IP_HL(ih) * 4;
 	if (size_ip < 20)
@@ -211,8 +209,6 @@ bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data,
 	packet.tm = header->ts.tv_sec;
 	packet.saddr = ih->ip_src.w;
 	packet.daddr = ih->ip_dst.w;
-
-	// std::cout << "len: " << header->len << "\n";
 
 	u_short sport, dport;
 	const char *payload = nullptr;
@@ -230,15 +226,6 @@ bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data,
 		dport = ntohs(th->th_dport);
 		payload = (const char *)(th + size_tcp);
 		payload_size = ntohs(ih->ip_len) - (size_ip + size_tcp);
-
-		/*
-		printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
-			ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
-			sport,
-			ih->ip_dst.b1, ih->ip_dst.b2, ih->ip_dst.b3, ih->ip_dst.b4,
-			dport);
-		std::cout << "TCP " << header->len << " " << payload_size << "\n";
-		*/
 	}
 	else if (ih->ip_p == IPPROTO_UDP)
 	{
@@ -247,19 +234,12 @@ bool PacketSniffer::handlePacket(struct pcap_pkthdr *header, const u_char *data,
 		dport = ntohs(uh->uh_dport);
 		payload = (const char *)(uh + sizeof(udp_header));
 		payload_size = ntohs(uh->uh_len) - sizeof(udp_header);
-
-		/*
-		printf("%d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
-			ih->ip_src.b1, ih->ip_src.b2, ih->ip_src.b3, ih->ip_src.b4,
-			sport,
-			ih->ip_dst.b1, ih->ip_dst.b2, ih->ip_dst.b3, ih->ip_dst.b4,
-			dport);
-		std::cout << "UDP " << payload_size << "\n";
-		*/
 	}
 	else
 	{
 		// Unsupported protocol - we still write some data in $packet
+		// If you want to add ICMP in the future, add another if with IPPROTO_ICMP
+		// and use icmp_header structure
 		return false;
 	}
 

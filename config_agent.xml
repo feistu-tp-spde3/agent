@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <Configuration>
-    <Sender>
-                <BufferSize>128000</BufferSize>
-		<Interval>10</Interval>
+        <Sender>
+                <BufferSize>128000</BufferSize> <!-- Send packets after this amount of bytes is reached in the buffer  -->
+                <Interval>10</Interval> <!-- Send packets after this many seconds -->
                 <Collector>ip:port</Collector>
 	</Sender>
 	<Agent>
@@ -12,8 +12,8 @@
                         <Process>hello.exe</Process>
                         <Process>world.exe</Process>
 		</MonitoredProcesses>
-                <SniffInterval>1000</SniffInterval>
+                <SniffInterval>1000</SniffInterval> <!-- Sniffing packet timeout -->
                 <SniffSnapLen>2048</SniffSnapLen>
-                <SniffPromiscMode>false</SniffPromiscMode>
+                <SniffPromiscMode>false</SniffPromiscMode> <!-- Sniffer promiscuous mode -->
 	</Agent>
 </Configuration>
